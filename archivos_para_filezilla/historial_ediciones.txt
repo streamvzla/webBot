@@ -1,0 +1,11 @@
+Archivos modificados hoy para igualar el diseño de admin/allowed-emails:
+
+1. resources/views/admin/allowed-emails/create.blade.php
+2. resources/views/admin/allowed-emails/edit.blade.php
+3. resources/views/admin/allowed-emails/mass-upload.blade.php
+
+Cambios realizados:
+- Se eliminaron las clases anteriores (ui-card, gf-card).
+- Se implementó exactamente la misma estructura de la vista principal (ae-card, ae-card-head, ae-card-body).
+- Se movieron los iconos para que aparezcan justo al lado de los títulos (ej: "Opciones de Carga", "Información del Correo").
+- Se adaptaron los inputs (ae-search), selects (ae-select) y switches (ae-check) para que sean idénticos a los del panel principal.

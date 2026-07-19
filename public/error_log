@@ -1,0 +1,7 @@
+[10-Feb-2026 03:52:23 UTC] PHP Fatal error:  Uncaught RuntimeException: Composer detected issues in your platform: Your Composer dependencies require a PHP version ">= 8.2.0". You are running 8.1.33. in /home/winic/demovipcodes.winic.es/vendor/composer/platform_check.php:22
+Stack trace:
+#0 /home/winic/demovipcodes.winic.es/vendor/composer/autoload_real.php(25): require()
+#1 /home/winic/demovipcodes.winic.es/vendor/autoload.php(22): ComposerAutoloaderInite5fbbe6137dc77bcd5b6646b5dd75b52::getLoader()
+#2 /home/winic/demovipcodes.winic.es/public/index.php(13): require('/home/winic/dem...')
+#3 {main}
+  thrown in /home/winic/demovipcodes.winic.es/vendor/composer/platform_check.php on line 22

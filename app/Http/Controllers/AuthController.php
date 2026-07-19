@@ -40,13 +40,7 @@ class AuthController extends Controller
         // 1. Intentar iniciar sesión como Cliente
         $client = Client::where('email', $credentials['email'])->first();
 
-        if ($client) {
-            if (!Hash::check($credentials['password'], $client->password)) {
-                throw ValidationException::withMessages([
-                    'email' => ['Las credenciales proporcionadas no son correctas.'],
-                ]);
-            }
-
+        if ($client && Hash::check($credentials['password'], $client->password)) {
             if (!$client->is_active) {
                 throw ValidationException::withMessages([
                     'email' => ['Tu cuenta está desactivada. Contacta al administrador.'],
@@ -67,16 +61,10 @@ class AuthController extends Controller
             return redirect()->intended(route('client.dashboard'));
         }
 
-        // 2. Si no es cliente, intentar como Administrador/User
+        // 2. Si no es cliente o la contraseña no coincidió, intentar como Administrador/User
         $user = User::where('email', $credentials['email'])->first();
 
-        if ($user) {
-            if (!Hash::check($credentials['password'], $user->password)) {
-                throw ValidationException::withMessages([
-                    'email' => ['Las credenciales proporcionadas no son correctas.'],
-                ]);
-            }
-
+        if ($user && Hash::check($credentials['password'], $user->password)) {
             if (!$user->is_active) {
                 throw ValidationException::withMessages([
                     'email' => ['Tu cuenta está desactivada. Contacta al administrador.'],
@@ -97,7 +85,7 @@ class AuthController extends Controller
             return redirect()->intended(route('admin.dashboard'));
         }
 
-        // 3. No existe en ninguna tabla
+        // 3. No existe en ninguna tabla o la contraseña es incorrecta en ambas
         throw ValidationException::withMessages([
             'email' => ['Las credenciales proporcionadas no son correctas.'],
         ]);

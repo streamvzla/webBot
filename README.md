@@ -277,7 +277,68 @@ El sistema implementa múltiples capas de seguridad:
 
 ---
 
+## 👁️ El Centinela IMAP
+
+El **Centinela** es un proceso que corre 24/7 en el servidor, escuchando los buzones IMAP configurados y procesando los correos entrantes (códigos de verificación) en tiempo real.
+
+### ¿Qué hace?
+```
+[Plataforma de Streaming] ──► [Correo IMAP] ──► [Centinela] ──► [Panel] ──► [Cliente]
+       Envía código               Llega al         Lee y         Guarda       Puede
+       por email                  buzón            procesa       en BD        consultarlo
+```
+
+### 🚀 Guía de Rescate del Servidor
+
+Si el VPS se reinicia o el Centinela se apaga, sigue estos pasos en orden desde la consola SSH:
+
+#### Paso 1 — Entrar a la Sala de Control
+```bash
+cd /var/www/mi-panel
+```
+
+#### Paso 2 — Despertar Sail, PHP y la Base de Datos
+```bash
+./vendor/bin/sail up -d
+```
+> La bandera `-d` significa **Detached** (segundo plano). Devuelve el control de la consola inmediatamente mientras todo arranca. Si configuraste el alias global de Sail, también puedes usar `sail up -d`.
+
+#### Paso 3 — Asegurar Permisos (Las Puertas)
+```bash
+docker exec -u root mi-panel-laravel.test-1 chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache
+```
+> Desbloquea los directorios vitales para que PHP pueda escribir sin errores tras un reinicio.
+
+#### Paso 4 — Aplicar Migraciones (Solo si subiste archivos nuevos)
+```bash
+docker exec -u root mi-panel-laravel.test-1 php artisan migrate
+```
+> ⚠️ Solo ejecuta este paso si subiste actualizaciones que incluyan cambios en la base de datos. Si no subiste nada, omítelo.
+
+#### Paso 5 — Despertar al Centinela (Modo Fantasma) 👻
+```bash
+nohup docker exec -u sail mi-panel-laravel.test-1 php artisan imap:sentinel > centinela.log 2>&1 &
+```
+> `nohup` asegura que el Centinela **NO muera** al cerrar la consola SSH. Corre en las sombras indefinidamente procesando correos entrantes.
+
+---
+
+### ⚡ Comandos Extra — Modo Dios
+
+| Comando | Descripción |
+|---------|-------------|
+| `tail -f centinela.log` | Ver en tiempo real lo que el Centinela está procesando *(Ctrl+C para salir sin apagarlo)* |
+| `./vendor/bin/sail restart` | Reiniciar solo PHP si hay lentitud o error de caché, sin apagar todo |
+| `pkill -f "imap:sentinel"` | Matar el Centinela si se comporta mal |
+| `./vendor/bin/sail stop` | Apagar completamente todo el servidor |
+| `./vendor/bin/sail ps` | Ver el estado de todos los contenedores activos |
+
+> 💡 **Pro Tip:** Guarda esta guía en tus marcadores del navegador o en el escritorio del servidor. No necesitas internet para consultarla.
+
+---
+
 ## 📝 Historial de Versiones
+
 
 ### v2.0 — Julio 2026
 - 🆕 Sistema multi-tenant completo con aislamiento estricto

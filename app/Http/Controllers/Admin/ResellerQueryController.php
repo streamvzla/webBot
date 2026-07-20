@@ -68,13 +68,11 @@ class ResellerQueryController extends Controller
             ], 400);
         }
 
-        // Verificar si el email pertenece a su inventario
-        // (O si es SuperAdmin, dejarlo consultar cualquiera)
-        $allowedEmailQuery = AllowedEmail::where('email', $email)->where('is_active', true);
-        if ($user->id !== 1) {
-            $allowedEmailQuery->where('user_id', $user->id);
-        }
-        $allowedEmail = $allowedEmailQuery->first();
+        // Aislamiento estricto: El correo debe pertenecer a su inventario, sin excepciones
+        $allowedEmail = AllowedEmail::where('email', $email)
+            ->where('is_active', true)
+            ->where('user_id', $user->id)
+            ->first();
 
         if (!$allowedEmail) {
             return response()->json([

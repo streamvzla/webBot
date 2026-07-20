@@ -29,10 +29,8 @@ class QueryController
                 return $q->where('result', $result);
             });
 
-        // Si no es Super Admin, solo ve queries de su red (él mismo o sus clientes)
-        if ($user->id !== 1) {
-            $query->whereIn('user_id', $user->getDescendantsIds());
-        }
+        // Aislamiento estricto: Cada quien solo ve sus propias consultas
+        $query->where('user_id', $user->id);
 
         $queries = $query->orderBy('created_at', 'desc')->paginate(20);
 
@@ -45,7 +43,7 @@ class QueryController
     public function show(Query $query)
     {
         $user = auth()->user();
-        if ($user->id !== 1 && !in_array($query->user_id, $user->getDescendantsIds())) {
+        if ($query->user_id !== $user->id) {
             abort(403, 'No autorizado.');
         }
         return view('admin.queries.show', compact('query'));
@@ -58,11 +56,9 @@ class QueryController
     {
         $user = auth()->user();
 
-        // Si no es super admin, solo puede eliminar queries de su red
-        if ($user->id !== 1) {
-            if (!in_array($query->user_id, $user->getDescendantsIds())) {
-                abort(403, 'No tienes autorización para eliminar este registro.');
-            }
+        // Aislamiento estricto
+        if ($query->user_id !== $user->id) {
+            abort(403, 'No tienes autorización para eliminar este registro.');
         }
 
         $query->delete();
@@ -78,12 +74,13 @@ class QueryController
     {
         $user = auth()->user();
 
-        // Solo admins pueden truncar todos los registros
-        if ($user->role !== 'admin') {
+        // Super Admin y Admins pueden limpiar su propio historial
+        if ($user->role !== 'admin' && $user->id !== 1) {
             abort(403, 'No tienes autorización para realizar esta acción.');
         }
 
-        Query::truncate();
+        // Aislamiento estricto: Solo elimina los registros de este usuario, no toda la base de datos
+        Query::where('user_id', $user->id)->delete();
 
         return redirect()->route('admin.queries.index')
             ->with('success', 'Todos los registros han sido eliminados.');

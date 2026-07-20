@@ -64,9 +64,8 @@ class ServerList extends Component
     public function getStatsProperty(): array
     {
         $base = EmailAccount::query();
-        if (auth()->user()->role === 'user') {
-            $base->where('user_id', auth()->id());
-        }
+        // Aislamiento estricto universal
+        $base->where('user_id', auth()->id());
         return [
             'total'         => (clone $base)->count(),
             'active'        => (clone $base)->where('is_active', true)->count(),
@@ -80,7 +79,6 @@ class ServerList extends Component
     public function getServersProperty()
     {
         $user  = auth()->user();
-        $isAdmin = $user->id === 1 || $user->role === 'admin';
 
         $query = EmailAccount::with('user')
             ->when($this->search, fn($q, $s) => $q->where(fn($sq) =>
@@ -90,7 +88,8 @@ class ServerList extends Component
             ))
             ->when($this->status !== '',     fn($q) => $q->where('is_active',    (bool)$this->status))
             ->when($this->authorized !== '', fn($q) => $q->where('is_authorized',(bool)$this->authorized))
-            ->when(!$isAdmin, fn($q) => $q->where('user_id', $user->id))
+            // Aislamiento estricto universal
+            ->where('user_id', $user->id)
             ->orderBy($this->sortBy, $this->sortDir);
 
         return $query->paginate(12);
@@ -113,7 +112,7 @@ class ServerList extends Component
     public function getDrawerServerProperty(): ?EmailAccount
     {
         return $this->drawerServerId
-            ? EmailAccount::with('user')->find($this->drawerServerId)
+            ? EmailAccount::with('user')->where('user_id', auth()->id())->find($this->drawerServerId)
             : null;
     }
 
@@ -121,6 +120,7 @@ class ServerList extends Component
     public function quickTest(int $id): void
     {
         $server = EmailAccount::findOrFail($id);
+        if ($server->user_id !== auth()->id()) abort(403);
         $this->testingId  = $id;
         $this->testResult = null;
 
@@ -196,6 +196,7 @@ class ServerList extends Component
     public function toggleActive(int $id): void
     {
         $server = EmailAccount::findOrFail($id);
+        if ($server->user_id !== auth()->id()) abort(403);
         $server->is_active = !$server->is_active;
         $server->save();
         $this->dispatch('notif', message: $server->is_active ? '✅ Servidor activado' : '⏸ Servidor desactivado');
@@ -206,6 +207,7 @@ class ServerList extends Component
     {
         if (auth()->user()->id !== 1 && auth()->user()->role !== 'admin') abort(403);
         $server = EmailAccount::findOrFail($id);
+        if ($server->user_id !== auth()->id()) abort(403);
         $server->is_authorized = !$server->is_authorized;
         $server->save();
         $this->dispatch('notif', message: $server->is_authorized ? '🔒 Servidor autorizado' : '🔓 Servidor desautorizado');
@@ -225,7 +227,9 @@ class ServerList extends Component
     public function deleteServer(): void
     {
         if (!$this->confirmDeleteId) return;
-        EmailAccount::findOrFail($this->confirmDeleteId)->delete();
+        $server = EmailAccount::findOrFail($this->confirmDeleteId);
+        if ($server->user_id !== auth()->id()) abort(403);
+        $server->delete();
         $this->confirmDeleteId = null;
         if ($this->drawerServerId) $this->drawerServerId = null;
         $this->dispatch('notif', message: '🗑 Servidor eliminado');

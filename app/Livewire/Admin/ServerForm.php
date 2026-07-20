@@ -33,6 +33,7 @@ class ServerForm extends Component
     public function mount(?EmailAccount $server = null)
     {
         if ($server && $server->exists) {
+            if ($server->user_id !== auth()->id()) abort(403);
             $this->server = $server;
             $this->isEditMode = true;
 

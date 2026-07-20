@@ -188,7 +188,7 @@ El sistema maneja **4 niveles jerárquicos** con aislamiento estricto de datos:
 
 | Componente | Versión Mínima |
 |-----------|---------------|
-| PHP | 8.2+ |
+| PHP | **8.5.0** |
 | Laravel | 12.x |
 | Livewire | 3.x |
 | MySQL / MariaDB | 8.0+ |

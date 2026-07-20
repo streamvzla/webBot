@@ -163,6 +163,11 @@ class ImapConnector
                             $foundValid = true;
                             break;
                         }
+                        // Si no es valido pero seguimos en generico, guardarlo por si acaso
+                        // Ignorar correos obvios del remitente
+                        if ($searchTo === 'generico@streamvzla.com' && !str_contains($candidate, 'netflix') && !str_contains($candidate, 'disney') && !str_contains($candidate, 'max') && !str_contains($candidate, 'amazon') && !str_contains($candidate, 'google')) {
+                            $searchTo = $candidate;
+                        }
                     }
                 }
             }
@@ -177,6 +182,10 @@ class ImapConnector
                             $searchTo = $candidate;
                             $foundValid = true;
                             break;
+                        }
+                        // Si no es valido pero seguimos en generico, guardarlo por si acaso
+                        if ($searchTo === 'generico@streamvzla.com' && !str_contains($candidate, 'netflix') && !str_contains($candidate, 'disney') && !str_contains($candidate, 'max') && !str_contains($candidate, 'amazon') && !str_contains($candidate, 'google')) {
+                            $searchTo = $candidate;
                         }
                     }
                 }

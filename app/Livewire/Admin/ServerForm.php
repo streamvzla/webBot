@@ -234,6 +234,7 @@ class ServerForm extends Component
         }
 
         if ($this->isEditMode) {
+            $data['is_authorized'] = true; // Forzar desbloqueo de servidores viejos al editar
             $this->server->update($data);
             session()->flash('success', 'Servidor actualizado exitosamente.');
         } else {

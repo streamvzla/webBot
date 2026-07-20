@@ -26,10 +26,8 @@ class PlatformController extends Controller
                 return $query->where('is_active', $request->boolean('status'));
             });
 
-        // En multi-tenancy, los usuarios normales ven solo sus propias plataformas, Super Admin ve todo
-        if ($user->id !== 1) {
-            $query->where('user_id', $user->id);
-        }
+        // Aislamiento estricto: Nadie puede ver plataformas ajenas, ni siquiera el Super Admin.
+        \$query->where('user_id', \$user->id);
 
         $platforms = $query->orderBy('name')->paginate(20);
 
@@ -307,4 +305,6 @@ class PlatformController extends Controller
         ]);
     }
 }
+
+
 

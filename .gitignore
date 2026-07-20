@@ -26,3 +26,15 @@ archivos_para_filezilla - Acceso directo.lnk
 centinela.log
 add_column.php
 add_toast.cjs
+
+# Scripts temporales de desarrollo y debug
+debug_*.php
+test_*.php
+fix_*.php
+fix_*.py
+fix_*.cjs
+convert_*.php
+convert_*.py
+diagnose_*.php
+update_*.cjs
+historial_ediciones*.txt

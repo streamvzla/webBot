@@ -96,11 +96,10 @@ class ImapConnector
         try {
             $folder = $this->client->getFolder('INBOX');
             
-            // Usar since() con una ventana de 3 días para absorber cualquier diferencia horaria del servidor
-            // Se elimina unseen() porque causa congelamiento (Tarpit) en el servidor IMAP de Google
-            // al forzar búsquedas de texto completo.
+            // Usar all() en lugar de since() para evitar que Google haga búsquedas exhaustivas por fecha
+            // El limit(50) combinado con setFetchOrderDesc() asegurará que traiga los 50 más nuevos instantáneamente.
             $messages = $folder->query()
-                ->since(now()->subDays(3))
+                ->all()
                 ->setFetchOrderDesc() // Más recientes primero
                 ->limit(50)           // Máximo 50 para evitar colapsar la memoria y el tiempo
                 ->setFetchBody(false)

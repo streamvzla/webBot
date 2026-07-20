@@ -162,6 +162,9 @@ class ServerForm extends Component
         // --- Paso 3: Intento de autenticación directa con Webklex ---
         $this->addDiagnosticStep("Iniciando motor Webklex PHP-IMAP...");
 
+        $originalTimeout = ini_get('default_socket_timeout');
+        ini_set('default_socket_timeout', 10); // [MODO DIOS PRO] Forzar timeout de socket a 10s
+
         try {
             $clientManager = new \Webklex\PHPIMAP\ClientManager();
             $client = $clientManager->make([
@@ -190,6 +193,8 @@ class ServerForm extends Component
             $this->addDiagnosticStep('Conexión fallida o credenciales rechazadas.', 'error');
             $this->setDiagnosticError('Error de autenticación IMAP.', $e->getMessage());
         }
+
+        ini_set('default_socket_timeout', $originalTimeout); // Restaurar
 
         $this->isDiagnosing = false;
     }
@@ -233,9 +238,9 @@ class ServerForm extends Component
             session()->flash('success', 'Servidor actualizado exitosamente.');
         } else {
             $data['user_id'] = auth()->id();
-            $data['is_authorized'] = false; // Requiere autorización de Super Admin
+            $data['is_authorized'] = true; // [AISLAMIENTO TOTAL] Se auto-autoriza porque cada quien maneja los suyos
             EmailAccount::create($data);
-            session()->flash('success', 'Servidor creado exitosamente. Un administrador debe autorizarlo.');
+            session()->flash('success', 'Servidor creado y autorizado exitosamente.');
         }
 
         return redirect()->route('admin.servers.index');

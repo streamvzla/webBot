@@ -1,66 +1,305 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+<div align="center">
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+<img src="https://img.shields.io/badge/Laravel-12.x-FF2D20?style=for-the-badge&logo=laravel&logoColor=white"/>
+<img src="https://img.shields.io/badge/Livewire-3.x-FB70A9?style=for-the-badge&logo=livewire&logoColor=white"/>
+<img src="https://img.shields.io/badge/PHP-8.2+-777BB4?style=for-the-badge&logo=php&logoColor=white"/>
+<img src="https://img.shields.io/badge/MySQL-8.0-4479A1?style=for-the-badge&logo=mysql&logoColor=white"/>
+<img src="https://img.shields.io/badge/Status-Production-22c55e?style=for-the-badge"/>
 
-## About Laravel
+<br/><br/>
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+# 🎛️ Tu Código — Panel de Gestión SaaS
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### Sistema multi-tenant de gestión de suscripciones de streaming
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+*Administra franquicias, revendedores, clientes, plataformas y correos desde un solo panel centralizado.*
 
-## Learning Laravel
+---
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+</div>
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+## 📋 Tabla de Contenidos
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+- [Descripción General](#-descripción-general)
+- [Arquitectura del Sistema](#-arquitectura-del-sistema)
+- [Roles y Permisos](#-roles-y-permisos)
+- [Módulos del Sistema](#-módulos-del-sistema)
+- [Requisitos Técnicos](#-requisitos-técnicos)
+- [Instalación](#-instalación)
+- [Configuración del .env](#-configuración-del-env)
+- [Seguridad](#-seguridad)
+- [Historial de Versiones](#-historial-de-versiones)
 
-## Laravel Sponsors
+---
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## 🌐 Descripción General
 
-### Premium Partners
+**Tu Código** es una plataforma SaaS (Software as a Service) multi-tenant diseñada para la gestión y distribución de suscripciones de plataformas de streaming. Permite a operadores del negocio administrar una red jerárquica de franquicias, revendedores y clientes finales, todo desde un panel centralizado con aislamiento total de datos entre inquilinos.
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+```
+┌─────────────────────────────────────────────┐
+│           tu-codigo.com (VPS)               │
+│                                             │
+│  Panel Admin ──► API Pública ──► Clientes   │
+│  (Laravel)       (Consultas)    (Portal)    │
+└─────────────────────────────────────────────┘
+```
 
-## Contributing
+---
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## 🏗️ Arquitectura del Sistema
 
-## Code of Conduct
+```
+tu-codigo_super_admin/
+│
+├── 📁 app/
+│   ├── Http/
+│   │   ├── Controllers/
+│   │   │   ├── AuthController.php          # Login inteligente (Admin + Cliente)
+│   │   │   └── Admin/
+│   │   │       ├── UserController.php       # Gestión de Franquicias/Revendedores
+│   │   │       ├── ClientController.php     # Gestión de Clientes Finales
+│   │   │       ├── PlatformController.php   # Gestión de Plataformas
+│   │   │       ├── EmailAccountController.php # Cuentas IMAP
+│   │   │       ├── AllowedEmailController.php # Perfiles/Correos de Plataformas
+│   │   │       ├── WarrantyController.php   # Sistema de Garantías
+│   │   │       ├── SettingsController.php   # Configuración Global
+│   │   │       └── IpBanController.php      # Sistema Anti-Spam
+│   │   └── Middleware/
+│   │       ├── CheckIpBan.php              # Bloqueo de IPs abusivas
+│   │       ├── CheckInstallation.php       # Verificación de instalación
+│   │       ├── CheckUserRole.php           # Control de acceso por rol
+│   │       └── CheckSuperAdmin.php         # Rutas exclusivas del Super Admin
+│   │
+│   ├── Livewire/Admin/
+│   │   ├── PlatformList.php                # Listado reactivo de plataformas
+│   │   ├── EmailAccountList.php            # Listado de cuentas IMAP
+│   │   └── ...                            # Otros componentes Livewire
+│   │
+│   └── Models/
+│       ├── User.php                        # Super Admin / Admin / Revendedor
+│       ├── Client.php                      # Cliente Final
+│       ├── Platform.php                    # Plataforma de streaming
+│       ├── AllowedEmail.php                # Perfil/correo vendible
+│       ├── EmailAccount.php                # Buzón IMAP maestro
+│       └── ...
+│
+├── 📁 resources/views/
+│   ├── auth/                              # Login, 2FA
+│   ├── admin/                             # Panel administrativo
+│   └── client/                            # Portal del cliente
+│
+└── 📁 database/migrations/                # Migraciones de BD
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+---
 
-## Security Vulnerabilities
+## 👥 Roles y Permisos
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+El sistema maneja **4 niveles jerárquicos** con aislamiento estricto de datos:
 
-## License
+```
+                    ┌─────────────────┐
+                    │   SUPER ADMIN   │  ← Dueño del sistema (ID=1)
+                    │  (Tú / Dueño)   │    Ve y gestiona TODO
+                    └────────┬────────┘
+                             │ crea
+              ┌──────────────┴──────────────┐
+              │                             │
+     ┌────────▼────────┐           ┌────────▼────────┐
+     │  ADMINISTRADOR  │           │  ADMINISTRADOR  │
+     │  (Franquicia A) │           │  (Franquicia B) │
+     │  role = admin   │           │  role = admin   │
+     └────────┬────────┘           └────────┬────────┘
+              │ crea                        │ crea
+     ┌────────▼────────┐           ┌────────▼────────┐
+     │   REVENDEDOR    │           │   REVENDEDOR    │
+     │  role = user    │           │  role = user    │
+     └────────┬────────┘           └────────┬────────┘
+              │ crea                        │ crea
+     ┌────────▼────────┐           ┌────────▼────────┐
+     │    CLIENTE      │           │    CLIENTE      │
+     │  (tabla propia) │           │  (tabla propia) │
+     └─────────────────┘           └─────────────────┘
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+| Rol | Tabla | Puede crear | Ve datos de otros |
+|-----|-------|-------------|-------------------|
+| Super Admin | `users` (id=1) | Todo | ✅ (global) |
+| Admin/Franquicia | `users` (role=admin) | Revendedores + Clientes | ❌ (solo los suyos) |
+| Revendedor | `users` (role=user) | Clientes | ❌ (solo los suyos) |
+| Cliente Final | `clients` | Nada | ❌ (su portal) |
+
+> 🔒 **Aislamiento estricto:** Cada inquilino ve y gestiona ÚNICAMENTE lo que él mismo creó. Ni el Super Admin puede ver plataformas o correos creados por otros (por diseño de negocio).
+
+---
+
+## 🧩 Módulos del Sistema
+
+### 🔐 Login Inteligente
+- Detecta automáticamente si el usuario es **Cliente** o **Admin/Franquicia/Revendedor**
+- Busca en ambas tablas (`clients` y `users`) de forma transparente
+- Normalización de email a minúsculas para compatibilidad con teclados móviles
+- Soporte para autenticación de dos factores (2FA)
+
+### 🏢 Gestión de Usuarios (Franquicias y Revendedores)
+- Creación, edición y desactivación de cuentas
+- Sistema jerárquico con `parent_id` para saber quién creó a quién
+- Control de suscripciones con fecha de vencimiento y días de gracia
+- Asignación de planes de franquicia con límites configurables
+
+### 👤 Gestión de Clientes Finales
+- Portal de acceso exclusivo para clientes (`/client/dashboard`)
+- Control de consultas diarias por cliente (`max_queries_per_day`)
+- Modos de acceso: `all` (todas las plataformas) o `selective` (solo las asignadas)
+- Fechas de vencimiento por perfil asignado
+
+### 📺 Gestión de Plataformas
+- CRUD completo con logo personalizado por plataforma
+- Imágenes guardadas en `public/platforms_logos` (compatible con CPanel sin symlinks)
+- Asuntos/perfiles configurables por plataforma
+- Aislamiento total: cada quien ve solo sus plataformas
+
+### 📧 Cuentas de Correo IMAP
+- Conexión real a buzones IMAP para leer códigos de verificación
+- Contraseñas cifradas con `Crypt::encryptString` (AES-256)
+- Test de conexión en tiempo real desde el panel
+- Asignación de cuentas a múltiples usuarios
+
+### 🔑 Perfiles / Correos Permitidos
+- Registro de correos/perfiles vendibles por plataforma
+- Estados dinámicos: **Libre**, **Ocupado**, **Vencido**
+- Carga masiva de perfiles (Mass Upload)
+- Sistema de vencimientos individuales por asignación cliente-perfil
+
+### 🛡️ Sistema de Garantías
+- Clientes pueden reportar incidencias desde su portal
+- Admins procesan y resuelven garantías
+- Estados: Pendiente, Aprobada, Rechazada, Resuelta
+
+### 🚫 Sistema Anti-Spam (IP Ban)
+- Detecta más de 2 solicitudes en 5 segundos desde la misma IP
+- Baneo automático por 1 hora con registro en BD
+- Administración manual de IPs baneadas desde el panel
+
+---
+
+## 💻 Requisitos Técnicos
+
+| Componente | Versión Mínima |
+|-----------|---------------|
+| PHP | 8.2+ |
+| Laravel | 12.x |
+| Livewire | 3.x |
+| MySQL / MariaDB | 8.0+ |
+| Composer | 2.x |
+| Node.js | 18+ |
+| Servidor | Apache / Nginx |
+
+---
+
+## 🚀 Instalación
+
+```bash
+# 1. Clonar el repositorio
+git clone https://github.com/streamvzla/webBot.git
+cd webBot
+
+# 2. Instalar dependencias PHP
+composer install --no-interaction --prefer-dist --optimize-autoloader
+
+# 3. Instalar dependencias JS
+npm install && npm run build
+
+# 4. Copiar y configurar el archivo de entorno
+cp .env.example .env
+php artisan key:generate
+
+# 5. Configurar la base de datos en .env y ejecutar migraciones
+php artisan migrate --seed
+
+# 6. Crear enlace simbólico de almacenamiento
+php artisan storage:link
+
+# 7. Ajustar permisos (Linux/VPS)
+chmod -R 775 storage bootstrap/cache
+chown -R www-data:www-data storage bootstrap/cache
+```
+
+---
+
+## ⚙️ Configuración del .env
+
+```env
+APP_NAME="Tu Código"
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://tu-dominio.com
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=tu_base_de_datos
+DB_USERNAME=tu_usuario
+DB_PASSWORD=tu_contraseña
+
+SESSION_DRIVER=database
+SESSION_LIFETIME=480
+SESSION_DOMAIN=.tu-dominio.com
+
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.tu-servidor.com
+MAIL_PORT=465
+MAIL_ENCRYPTION=ssl
+MAIL_USERNAME=correo@tu-dominio.com
+MAIL_PASSWORD=tu_contraseña_smtp
+
+CACHE_DRIVER=file
+QUEUE_CONNECTION=sync
+```
+
+---
+
+## 🔐 Seguridad
+
+El sistema implementa múltiples capas de seguridad:
+
+- ✅ **Autenticación dual** — Tablas separadas para admins y clientes
+- ✅ **Hashing de contraseñas** — Bcrypt automático via Laravel
+- ✅ **Cifrado AES-256** — Contraseñas IMAP cifradas con `Crypt`
+- ✅ **2FA** — Autenticación de dos factores opcional
+- ✅ **CSRF Protection** — Tokens en todos los formularios
+- ✅ **IDOR Protection** — Verificación de propiedad en cada acción
+- ✅ **Email normalizado** — Login case-insensitive (compatible con móviles)
+- ✅ **IP Ban** — Sistema anti-spam automático
+- ✅ **Multi-Tenancy** — Aislamiento estricto de datos por usuario
+- ✅ **Middleware por rol** — Acceso granular por nivel jerárquico
+
+---
+
+## 📝 Historial de Versiones
+
+### v2.0 — Julio 2026
+- 🆕 Sistema multi-tenant completo con aislamiento estricto
+- 🆕 Login inteligente con detección automática de rol
+- 🆕 Fix: Email case-insensitive en login (compatibilidad móviles)
+- 🆕 Sistema de garantías
+- 🆕 Carga masiva de perfiles (Mass Upload)
+- 🆕 Sistema Anti-Spam con IP Ban automático
+- 🆕 Autenticación 2FA
+- 🆕 Portal exclusivo para clientes finales
+- 🆕 Planes de franquicia configurables
+
+### v1.0 — Versión inicial
+- Panel básico de gestión
+- CRUD de plataformas y clientes
+
+---
+
+<div align="center">
+
+**Desarrollado con ❤️ para la gestión profesional de servicios de streaming**
+
+[![GitHub](https://img.shields.io/badge/GitHub-streamvzla-181717?style=for-the-badge&logo=github)](https://github.com/streamvzla/webBot)
+
+</div>

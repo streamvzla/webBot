@@ -149,15 +149,6 @@ Route::prefix('admin')->middleware(['auth', \App\Http\Middleware\CheckFranchiseS
             'destroy' => 'admin.allowed-emails.destroy',
         ]);
         
-        // Planes de Franquicia
-        Route::resource('franchise-plans', App\Http\Controllers\Admin\FranchisePlanController::class)->names([
-            'index' => 'admin.franchise-plans.index',
-            'create' => 'admin.franchise-plans.create',
-            'store' => 'admin.franchise-plans.store',
-            'edit' => 'admin.franchise-plans.edit',
-            'update' => 'admin.franchise-plans.update',
-            'destroy' => 'admin.franchise-plans.destroy',
-        ]);
     });
 
     // Queries
@@ -190,25 +181,26 @@ Route::prefix('admin')->middleware(['auth', \App\Http\Middleware\CheckFranchiseS
 
     // Rutas exclusivas para el Súper Administrador / Admin
     Route::middleware([\App\Http\Middleware\CheckUserRole::class.':admin'])->group(function () {
-        Route::resource('franchise-plans', App\Http\Controllers\Admin\FranchisePlanController::class)->names([
-            'index' => 'admin.franchise-plans.index',
-            'create' => 'admin.franchise-plans.create',
-            'store' => 'admin.franchise-plans.store',
-            'edit' => 'admin.franchise-plans.edit',
-            'update' => 'admin.franchise-plans.update',
-            'destroy' => 'admin.franchise-plans.destroy',
-        ]);
-
-        // IP Bans (Anti-Spam)
-        Route::get('/ip-bans', [App\Http\Controllers\Admin\IpBanController::class, 'index'])->name('admin.ip-bans.index');
-        Route::delete('/ip-bans/{ipBan}', [App\Http\Controllers\Admin\IpBanController::class, 'destroy'])->name('admin.ip-bans.destroy');
-        
         // --- SUPER ADMIN ONLY (ID = 1) ---
         Route::middleware([\App\Http\Middleware\CheckSuperAdmin::class])->group(function () {
+            // Planes de Franquicia (Exclusivo Súper Admin)
+            Route::resource('franchise-plans', App\Http\Controllers\Admin\FranchisePlanController::class)->names([
+                'index' => 'admin.franchise-plans.index',
+                'create' => 'admin.franchise-plans.create',
+                'store' => 'admin.franchise-plans.store',
+                'edit' => 'admin.franchise-plans.edit',
+                'update' => 'admin.franchise-plans.update',
+                'destroy' => 'admin.franchise-plans.destroy',
+            ]);
+
             Route::get('/licenses', \App\Livewire\Admin\LicenseManager::class)->name('admin.licenses.index');
             Route::get('/licenses/create', \App\Livewire\Admin\LicenseForm::class)->name('admin.licenses.create');
             Route::get('/licenses/{license}/edit', \App\Livewire\Admin\LicenseForm::class)->name('admin.licenses.edit');
         });
+        
+        // IP Bans (Anti-Spam)
+        Route::get('/ip-bans', [App\Http\Controllers\Admin\IpBanController::class, 'index'])->name('admin.ip-bans.index');
+        Route::delete('/ip-bans/{ipBan}', [App\Http\Controllers\Admin\IpBanController::class, 'destroy'])->name('admin.ip-bans.destroy');
         // ---------------------------------
     });
 

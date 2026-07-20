@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Http\Controllers\Admin;
 
@@ -17,9 +17,7 @@ class EmailAccountController extends Controller
     public function index()
     {
         $query = EmailAccount::with('users')->orderBy('email');
-        if (auth()->id() !== 1) {
-            $query->where('user_id', auth()->id());
-        }
+        \$query->where('user_id', auth()->id());
         $emailAccounts = $query->get();
         return view('admin.email-accounts.index', compact('emailAccounts'));
     }
@@ -50,7 +48,7 @@ class EmailAccountController extends Controller
             'is_active' => 'boolean',
         ]);
 
-        // Cifrar contraseña IMAP antes de guardar
+        // Cifrar contraseÃ±a IMAP antes de guardar
         $encryptedPassword = Crypt::encryptString($validated['password']);
 
         $emailAccount = EmailAccount::create([
@@ -79,7 +77,7 @@ class EmailAccountController extends Controller
     public function edit(EmailAccount $emailAccount)
     {
         if ($emailAccount->user_id !== auth()->id()) {
-            abort(403, 'No tienes autorización para acceder a esta cuenta.');
+            abort(403, 'No tienes autorizaciÃ³n para acceder a esta cuenta.');
         }
 
         $users = User::where('is_active', true)->orderBy('username')->get();
@@ -93,7 +91,7 @@ class EmailAccountController extends Controller
     public function update(Request $request, EmailAccount $emailAccount)
     {
         if ($emailAccount->user_id !== auth()->id()) {
-            abort(403, 'No tienes autorización para actualizar esta cuenta.');
+            abort(403, 'No tienes autorizaciÃ³n para actualizar esta cuenta.');
         }
 
         $validated = $request->validate([
@@ -108,7 +106,7 @@ class EmailAccountController extends Controller
             'is_active' => 'boolean',
         ]);
 
-        // Cifrar nueva contraseña si se proporciona
+        // Cifrar nueva contraseÃ±a si se proporciona
         $imapPassword = !empty($validated['password'])
             ? Crypt::encryptString($validated['password'])
             : $emailAccount->imap_password;
@@ -140,7 +138,7 @@ class EmailAccountController extends Controller
     public function destroy(EmailAccount $emailAccount)
     {
         if ($emailAccount->user_id !== auth()->id()) {
-            abort(403, 'No tienes autorización para eliminar esta cuenta.');
+            abort(403, 'No tienes autorizaciÃ³n para eliminar esta cuenta.');
         }
 
         // Detach all users first
@@ -158,7 +156,7 @@ class EmailAccountController extends Controller
     public function testConnection(Request $request, EmailAccount $emailAccount)
     {
         if ($emailAccount->user_id !== auth()->id()) {
-            abort(403, 'No tienes autorización para acceder a esta cuenta.');
+            abort(403, 'No tienes autorizaciÃ³n para acceder a esta cuenta.');
         }
 
         try {
@@ -174,7 +172,7 @@ class EmailAccountController extends Controller
             $emailAccount->update(['last_checked_at' => now()]);
 
             return redirect()->back()->with([
-                'success' => 'Conexión IMAP exitosa.',
+                'success' => 'ConexiÃ³n IMAP exitosa.',
                 'connection_status' => [
                     'connected' => true,
                     'messages_count' => $status['mailbox_info']['messages'] ?? 0,
@@ -189,7 +187,7 @@ class EmailAccountController extends Controller
             ]);
 
             return redirect()->back()->with([
-                'error' => 'Error de conexión IMAP: ' . $e->getMessage()
+                'error' => 'Error de conexiÃ³n IMAP: ' . $e->getMessage()
             ]);
         }
     }
@@ -217,7 +215,7 @@ class EmailAccountController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Conexión IMAP exitosa',
+                'message' => 'ConexiÃ³n IMAP exitosa',
                 'data' => [
                     'connected' => true,
                     'messages_count' => $status['mailbox_info']['messages'] ?? 0,
@@ -230,9 +228,10 @@ class EmailAccountController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error de conexión IMAP',
+                'message' => 'Error de conexiÃ³n IMAP',
                 'error' => $e->getMessage(),
             ], 500);
         }
     }
 }
+

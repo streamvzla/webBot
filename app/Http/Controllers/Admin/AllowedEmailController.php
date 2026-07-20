@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Http\Controllers\Admin;
 
@@ -20,14 +20,14 @@ class AllowedEmailController
             ->withCount([
                 // Total de clientes asignados
                 'clients as total_clients_count',
-                // Clientes con asignación ACTIVA (no vencida)
+                // Clientes con asignaciÃ³n ACTIVA (no vencida)
                 'clients as active_clients_count' => function ($q) {
                     $q->where(function ($c) {
                         $c->whereNull('allowed_email_client.expires_at')
                           ->orWhereDate('allowed_email_client.expires_at', '>=', now()->toDateString());
                     });
                 },
-                // Clientes con asignación VENCIDA
+                // Clientes con asignaciÃ³n VENCIDA
                 'clients as expired_clients_count' => function ($q) {
                     $q->whereNotNull('allowed_email_client.expires_at')
                       ->whereDate('allowed_email_client.expires_at', '<', now()->toDateString());
@@ -49,11 +49,11 @@ class AllowedEmailController
                 return $query->where('user_id', $userId);
             })
             ->when($request->assignment === 'free', function ($query) {
-                // Libre: sin clientes O todos los clientes tienen asignación vencida
+                // Libre: sin clientes O todos los clientes tienen asignaciÃ³n vencida
                 return $query->where(function ($q) {
                     $q->doesntHave('clients')
                       ->orWhereDoesntHave('clients', function ($inner) {
-                          // No tiene ningún cliente con asignación activa (no vencida)
+                          // No tiene ningÃºn cliente con asignaciÃ³n activa (no vencida)
                           $inner->where(function ($c) {
                               $c->whereNull('allowed_email_client.expires_at')
                                 ->orWhereDate('allowed_email_client.expires_at', '>=', now()->toDateString());
@@ -62,7 +62,7 @@ class AllowedEmailController
                 });
             })
             ->when($request->assignment === 'assigned', function ($query) {
-                // Ocupada: tiene al menos un cliente con asignación activa
+                // Ocupada: tiene al menos un cliente con asignaciÃ³n activa
                 return $query->whereHas('clients', function ($inner) {
                     $inner->where(function ($c) {
                         $c->whereNull('allowed_email_client.expires_at')
@@ -71,24 +71,22 @@ class AllowedEmailController
                 });
             })
             ->when($request->assignment === 'expired', function ($query) {
-                // Con asignaciones vencidas (pero aún tiene el pivot)
+                // Con asignaciones vencidas (pero aÃºn tiene el pivot)
                 return $query->whereHas('clients', function ($inner) {
                     $inner->whereNotNull('allowed_email_client.expires_at')
                           ->whereDate('allowed_email_client.expires_at', '<', now()->toDateString());
                 });
             });
 
-        // En multi-tenancy, los usuarios normales ven solo lo suyo, Super Admin ve todo
-        if ($user && $user->id !== 1) {
-            $query->where('user_id', $user->id);
+        // Aislamiento estricto: Nadie puede ver correos ajenos
+        if (\$user) {
+            \$query->where('user_id', \$user->id);
         }
 
         $allowedEmails = $query->orderBy('email')->paginate(20);
 
-        // Estadísticas globales para el panel
-        $baseQuery = AllowedEmail::when($user->id !== 1, function($q) use ($user) {
-            $q->where('user_id', $user->id);
-        });
+        // EstadÃ­sticas globales para el panel
+        $baseQuery = AllowedEmail::where('user_id', \$user->id);
 
         $stats = [
             'total'    => (clone $baseQuery)->count(),
@@ -174,7 +172,7 @@ class AllowedEmailController
         foreach ($emailList as $emailStr) {
             $emailStr = trim($emailStr);
             if (!filter_var($emailStr, FILTER_VALIDATE_EMAIL)) {
-                $errors[] = "$emailStr no es un formato válido.";
+                $errors[] = "$emailStr no es un formato vÃ¡lido.";
                 continue;
             }
 
@@ -191,7 +189,7 @@ class AllowedEmailController
             $query->where('user_id', $user->id);
 
             if ($query->exists()) {
-                $errors[] = "$emailStr ya está registrado.";
+                $errors[] = "$emailStr ya estÃ¡ registrado.";
                 continue;
             }
 
@@ -215,7 +213,7 @@ class AllowedEmailController
             }
             return redirect()->route('admin.allowed-emails.index')->with('success', $msg);
         } else {
-            return redirect()->back()->withInput()->with('error', 'No se agregó ningún correo. ' . implode(" ", $errors));
+            return redirect()->back()->withInput()->with('error', 'No se agregÃ³ ningÃºn correo. ' . implode(" ", $errors));
         }
     }
 
@@ -228,7 +226,7 @@ class AllowedEmailController
 
         // Verificar permisos
         if ($allowedEmail->user_id !== $user->id) {
-            abort(403, 'No tienes autorización para editar este correo.');
+            abort(403, 'No tienes autorizaciÃ³n para editar este correo.');
         }
 
         // Obtener plataformas disponibles para el usuario
@@ -254,7 +252,7 @@ class AllowedEmailController
 
         // Verificar permisos
         if ($allowedEmail->user_id !== $user->id) {
-            abort(403, 'No tienes autorización para editar este correo.');
+            abort(403, 'No tienes autorizaciÃ³n para editar este correo.');
         }
 
         $validated = $request->validate([
@@ -305,7 +303,7 @@ class AllowedEmailController
 
         // Verificar permisos
         if ($allowedEmail->user_id !== $user->id) {
-            abort(403, 'No tienes autorización para eliminar este correo.');
+            abort(403, 'No tienes autorizaciÃ³n para eliminar este correo.');
         }
 
         $allowedEmail->delete();
@@ -374,7 +372,7 @@ class AllowedEmailController
         $emails = array_unique($matches[0]);
         
         if (empty($emails)) {
-            return back()->withErrors(['emails_text' => 'No se detectó ningún correo válido en el texto ni en el archivo.'])->withInput();
+            return back()->withErrors(['emails_text' => 'No se detectÃ³ ningÃºn correo vÃ¡lido en el texto ni en el archivo.'])->withInput();
         }
 
         $addedCount = 0;
@@ -418,3 +416,4 @@ class AllowedEmailController
             ->with('success', "Carga masiva completada: {$addedCount} correos agregados, {$duplicateCount} omitidos (duplicados).");
     }
 }
+

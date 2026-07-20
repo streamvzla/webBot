@@ -234,7 +234,7 @@
                                               <div>
                                                   <div style="font-size:0.85rem;font-weight:700;color:white;">{{ $user->name ?: $user->username }}</div>
                                                   <div style="font-size:0.65rem;color:rgba(148,163,184,0.5);margin-top:0.15rem;font-weight:500;">
-                                                      @{{ $user->username }} &middot; {{ $user->email }}
+                                                      {{ '@' . $user->username }} &middot; {{ $user->email }}
                                                   </div>
                                               </div>
                                           </div>

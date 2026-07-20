@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Livewire\Admin;
 
@@ -44,13 +44,13 @@ class PlatformList extends Component
         $this->sortDir = $this->sortDir === 'asc' ? 'desc' : 'asc';
     }
 
-    // ── Computed: Plataformas paginadas ──────────────────────────────────────
+    // â”€â”€ Computed: Plataformas paginadas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     public function getPlatformsProperty()
     {
         $user = auth()->user();
 
         return Platform::withCount(['subjects', 'queries', 'clients'])
-            ->where('user_id', $user->id)
+            ->when(\$user->id !== 1, fn(\$q) => \$q->where('user_id', \$user->id))
             ->when($this->search, fn($q) =>
                 $q->where(fn($sq) =>
                     $sq->where('name', 'like', '%'.$this->search.'%')
@@ -65,11 +65,11 @@ class PlatformList extends Component
             ->paginate(12);
     }
 
-    // ── Computed: Stats globales ─────────────────────────────────────────────
+    // â”€â”€ Computed: Stats globales â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     public function getStatsProperty(): array
     {
         $user = auth()->user();
-        $base = Platform::where('user_id', $user->id);
+        $base = Platform::when(\$user->id !== 1, fn(\$q) => \$q->where('user_id', \$user->id));
 
         return [
             'total'    => (clone $base)->count(),
@@ -79,19 +79,19 @@ class PlatformList extends Component
         ];
     }
 
-    // ── Acción: Toggle activo/inactivo ───────────────────────────────────────
+    // â”€â”€ AcciÃ³n: Toggle activo/inactivo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     public function toggleActive(int $id): void
     {
         $platform = Platform::findOrFail($id);
         $this->checkPlatformAccess($platform);
         $platform->update(['is_active' => !$platform->is_active]);
         $this->dispatch('notif', message: $platform->is_active
-            ? "✅ {$platform->name} activada."
-            : "⏸️ {$platform->name} desactivada."
+            ? "âœ… {$platform->name} activada."
+            : "â¸ï¸ {$platform->name} desactivada."
         );
     }
 
-    // ── Acción: Eliminar ─────────────────────────────────────────────────────
+    // â”€â”€ AcciÃ³n: Eliminar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     public function deletePlatform(int $id): void
     {
         $platform = Platform::findOrFail($id);
@@ -103,10 +103,10 @@ class PlatformList extends Component
 
         $name = $platform->name;
         $platform->delete();
-        $this->dispatch('notif', message: "🗑️ Plataforma «{$name}» eliminada.");
+        $this->dispatch('notif', message: "ðŸ—‘ï¸ Plataforma Â«{$name}Â» eliminada.");
     }
 
-    // ── Acción: Duplicar plataforma ──────────────────────────────────────────
+    // â”€â”€ AcciÃ³n: Duplicar plataforma â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     public function duplicatePlatform(int $id): void
     {
         $platform = Platform::with('subjects')->findOrFail($id);
@@ -133,14 +133,14 @@ class PlatformList extends Component
             ]);
         }
 
-        $this->dispatch('notif', message: "📋 Plataforma duplicada como «{$newName}».");
+        $this->dispatch('notif', message: "ðŸ“‹ Plataforma duplicada como Â«{$newName}Â».");
     }
 
-    // ── Helper: verificar permisos ────────────────────────────────────────────
+    // â”€â”€ Helper: verificar permisos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     private function checkPlatformAccess(Platform $platform): void
     {
         $user = auth()->user();
-        if ($platform->user_id !== $user->id) {
+        if (\$user->id !== 1 && \$platform->user_id !== \$user->id) {
             abort(403, 'No autorizado');
         }
     }
@@ -150,3 +150,4 @@ class PlatformList extends Component
         return view('livewire.admin.platform-list');
     }
 }
+

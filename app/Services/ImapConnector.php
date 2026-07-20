@@ -152,6 +152,20 @@ class ImapConnector
                 }
             }
 
+            // 1.5 Buscar específicamente en cabeceras de reenvío para un fallback seguro
+            if (!$foundValid && $searchTo === 'generico@streamvzla.com') {
+                $rawHeader = $message->getHeader()->raw;
+                if (preg_match_all('/(?:Delivered-To|Envelope-To|X-Forwarded-To):\s*<?([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})>?/i', $rawHeader, $forwardMatches)) {
+                    foreach ($forwardMatches[1] as $candidate) {
+                        $candidate = strtolower(trim($candidate));
+                        if ($candidate !== strtolower(trim($this->emailAccount->email))) {
+                            $searchTo = $candidate;
+                            break;
+                        }
+                    }
+                }
+            }
+
             // 2. Si no es un email de la BD, escanear el Codigo Crudo completo (Raw Headers)
             if (!$foundValid) {
                 $rawHeader = $message->getHeader()->raw;
@@ -162,11 +176,6 @@ class ImapConnector
                             $searchTo = $candidate;
                             $foundValid = true;
                             break;
-                        }
-                        // Si no es valido pero seguimos en generico, guardarlo por si acaso
-                        // Ignorar correos obvios del remitente y el correo maestro
-                        if ($searchTo === 'generico@streamvzla.com' && $candidate !== strtolower(trim($this->emailAccount->email)) && !str_contains($candidate, 'netflix') && !str_contains($candidate, 'disney') && !str_contains($candidate, 'max') && !str_contains($candidate, 'amazon') && !str_contains($candidate, 'google')) {
-                            $searchTo = $candidate;
                         }
                     }
                 }
@@ -182,10 +191,6 @@ class ImapConnector
                             $searchTo = $candidate;
                             $foundValid = true;
                             break;
-                        }
-                        // Si no es valido pero seguimos en generico, guardarlo por si acaso
-                        if ($searchTo === 'generico@streamvzla.com' && $candidate !== strtolower(trim($this->emailAccount->email)) && !str_contains($candidate, 'netflix') && !str_contains($candidate, 'disney') && !str_contains($candidate, 'max') && !str_contains($candidate, 'amazon') && !str_contains($candidate, 'google')) {
-                            $searchTo = $candidate;
                         }
                     }
                 }

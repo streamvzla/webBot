@@ -21,17 +21,18 @@ class DashboardMetrics extends Component
     private function scopeModel($modelClass)
     {
         $q = $modelClass::query();
-        if (auth()->id() !== 1) {
-            $descendants = auth()->user()->getDescendantsIds();
-            $table = (new $modelClass)->getTable();
-            if ($modelClass === User::class) {
-                $q->whereIn($table . '.id', $descendants);
-            } elseif ($modelClass === IpBan::class) {
-                // Admins do not see IP bans
+        $table = (new $modelClass)->getTable();
+        
+        // Aislamiento estricto universal (cada quien ve solo sus propios datos)
+        if ($modelClass === User::class) {
+            // Los usuarios solo ven en sus métricas a los revendedores que ellos crearon de forma directa
+            $q->where('parent_id', auth()->id());
+        } elseif ($modelClass === IpBan::class) {
+            if (auth()->id() !== 1) {
                 $q->whereRaw('1 = 0');
-            } else {
-                $q->whereIn($table . '.user_id', $descendants);
             }
+        } else {
+            $q->where($table . '.user_id', auth()->id());
         }
         return $q;
     }
@@ -219,9 +220,8 @@ class DashboardMetrics extends Component
     private function baseQuery()
     {
         $q = Query::query();
-        if (auth()->id() !== 1) {
-            $q->whereIn('user_id', auth()->user()->getDescendantsIds());
-        }
+        // Aislamiento estricto
+        $q->where('user_id', auth()->id());
         if ($this->filter === 'today') $q->whereDate('created_at', today());
         if ($this->filter === 'week')  $q->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()]);
         if ($this->filter === 'month') $q->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year);
@@ -231,9 +231,8 @@ class DashboardMetrics extends Component
     private function prevQuery()
     {
         $q = Query::query();
-        if (auth()->id() !== 1) {
-            $q->whereIn('user_id', auth()->user()->getDescendantsIds());
-        }
+        // Aislamiento estricto
+        $q->where('user_id', auth()->id());
         if ($this->filter === 'today') $q->whereDate('created_at', today()->subDay());
         if ($this->filter === 'week')  $q->whereBetween('created_at', [now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek()]);
         if ($this->filter === 'month') $q->whereMonth('created_at', now()->subMonth()->month);

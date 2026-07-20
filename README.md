@@ -349,6 +349,7 @@ nohup docker exec -u sail mi-panel-laravel.test-1 php artisan imap:sentinel > ce
 - 🆕 Fix Garantías: Aislamiento estricto de tickets y acceso desbloqueado para Súper Admin
 - 🆕 Fix Consultas (Queries): Aislamiento hermético y parche de seguridad (prevención de borrado masivo)
 - 🆕 Fix Seguridad (Crítico): Rutas de Planes de Franquicia bloqueadas exclusivamente para el Súper Admin
+- 🆕 Fix Visual: Corrección de error de renderizado en la tabla de Usuarios (Mi Equipo)
 - 🆕 Carga masiva de perfiles (Mass Upload)
 - 🆕 Sistema Anti-Spam con IP Ban automático
 - 🆕 Autenticación 2FA

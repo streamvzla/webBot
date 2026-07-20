@@ -142,26 +142,23 @@ class ServerList extends Component
             }
 
             $enc   = $server->imap_encryption ?? 'ssl';
-            $flags = match ($enc) {
-                'ssl'  => '/imap/ssl/novalidate-cert',
-                'tls'  => '/imap/tls/novalidate-cert',
-                default => '/imap/ssl/novalidate-cert',
-            };
-            $mailbox    = "{{$server->imap_host}:{$server->imap_port}{$flags}}";
-            @imap_errors();
             
-            // [MODO DIOS] Forzar timeout corto para evitar que Nginx lance 504 Gateway Time-out
-            imap_timeout(IMAP_OPENTIMEOUT, 10);
-            imap_timeout(IMAP_READTIMEOUT, 10);
-            imap_timeout(IMAP_WRITETIMEOUT, 10);
-            
-            $connection = @imap_open($mailbox, $server->username, $password, OP_READONLY, 1);
-
-            if (!$connection) {
-                $error = @imap_last_error();
-                @imap_errors();
+            try {
+                $clientManager = new \Webklex\PHPIMAP\ClientManager();
+                $client = $clientManager->make([
+                    'host'          => $server->imap_host,
+                    'port'          => $server->imap_port,
+                    'encryption'    => $enc,
+                    'validate_cert' => false,
+                    'username'      => $server->username,
+                    'password'      => $password,
+                    'protocol'      => 'imap'
+                ]);
+                $client->connect();
+                $count = 0;
+            } catch (\Exception $e) {
                 $this->testResult  = 'error';
-                $this->testMessage = $error ?: 'Credenciales inválidas.';
+                $this->testMessage = $e->getMessage() ?: 'Credenciales inválidas.';
                 $this->testingId   = null;
 
                 // update last_checked
@@ -169,10 +166,6 @@ class ServerList extends Component
                 $server->save();
                 return;
             }
-
-            $info  = @imap_mailboxmsginfo($connection);
-            $count = $info->Nmsgs ?? 0;
-            @imap_close($connection);
 
             $server->last_checked_at = now();
             $server->save();

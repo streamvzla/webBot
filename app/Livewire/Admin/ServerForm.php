@@ -159,64 +159,37 @@ class ServerForm extends Component
         fclose($socket);
         $this->addDiagnosticStep("Puerto {$port} alcanzable ✓");
 
-        // --- Paso 2: Determinar flags IMAP ---
-        $isGmail = str_contains($host, 'gmail.com') || str_contains($host, 'googlemail.com');
-        if ($encryption === 'ssl') {
-            $flags = $isGmail ? '/imap/ssl/validate-cert' : '/imap/ssl/novalidate-cert';
-        } elseif ($encryption === 'tls') {
-            $flags = '/imap/tls/novalidate-cert';
-        } else {
-            $flags = '/imap/novalidate-cert';
+        // --- Paso 3: Intento de autenticación directa con Webklex ---
+        $this->addDiagnosticStep("Iniciando motor Webklex PHP-IMAP...");
+
+        try {
+            $clientManager = new \Webklex\PHPIMAP\ClientManager();
+            $client = $clientManager->make([
+                'host'          => $host,
+                'port'          => $port,
+                'encryption'    => $encryption,
+                'validate_cert' => false,
+                'username'      => $username,
+                'password'      => $plainPassword,
+                'protocol'      => 'imap'
+            ]);
+            
+            $client->connect();
+            
+            $this->addDiagnosticStep('Autenticación exitosa. Bandeja accedida correctamente.', 'success');
+
+            $this->diagnosticResult  = 'success';
+            $this->diagnosticMessage = '¡Conexión IMAP Exitosa!';
+            $this->diagnosticData    = [
+                'host'     => $host,
+                'port'     => $port,
+                'username' => $username,
+                'messages' => 'OK',
+            ];
+        } catch (\Exception $e) {
+            $this->addDiagnosticStep('Conexión fallida o credenciales rechazadas.', 'error');
+            $this->setDiagnosticError('Error de autenticación IMAP.', $e->getMessage());
         }
-
-        $mailbox = "{{$host}:{$port}{$flags}}";
-        $this->addDiagnosticStep("Negociando SSL/TLS...");
-
-        // --- Paso 3: Intento de autenticación directa ---
-        imap_errors(); // Limpiar stack de errores
-
-        $this->addDiagnosticStep("Verificando credenciales IMAP...");
-
-        // [MODO DIOS] Forzar timeout corto para evitar que Nginx lance 504 Gateway Time-out
-        imap_timeout(IMAP_OPENTIMEOUT, 10);
-        imap_timeout(IMAP_READTIMEOUT, 10);
-        imap_timeout(IMAP_WRITETIMEOUT, 10);
-
-        $conn = @imap_open(
-            $mailbox,
-            $username,
-            $plainPassword,
-            OP_READONLY,
-            1,
-            ['DISABLE_AUTHENTICATOR' => ['GSSAPI', 'NTLM']]
-        );
-
-        $lastErr  = imap_last_error();
-        imap_errors(); // Vaciar para evitar shutdown fatal
-
-        if (!$conn) {
-            $this->addDiagnosticStep('Credenciales rechazadas.', 'error');
-            $this->setDiagnosticError(
-                'Error de autenticación IMAP.',
-                $lastErr ?: 'Credenciales inválidas o acceso IMAP deshabilitado en la cuenta.'
-            );
-            return;
-        }
-
-        $info  = @imap_mailboxmsginfo($conn);
-        $count = $info ? ($info->Nmsgs ?? 0) : 0;
-        @imap_close($conn);
-
-        $this->addDiagnosticStep('Autenticación exitosa. Bandeja accedida correctamente.', 'success');
-
-        $this->diagnosticResult  = 'success';
-        $this->diagnosticMessage = '¡Conexión IMAP Exitosa!';
-        $this->diagnosticData    = [
-            'host'     => $host,
-            'port'     => $port,
-            'username' => $username,
-            'messages' => $count,
-        ];
 
         $this->isDiagnosing = false;
     }

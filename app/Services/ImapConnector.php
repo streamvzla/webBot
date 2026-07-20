@@ -177,34 +177,7 @@ class ImapConnector
                 }
             }
 
-            // 3. Fallback Extremo: Buscar dentro del texto del correo ("Te enviamos el codigo a mipapa...")
-            if (!$foundValid) {
-                $bodyText = $message->getTextBody() ?? '';
-                if (preg_match_all('/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/i', $bodyText, $matches)) {
-                    foreach ($matches[0] as $candidate) {
-                        $candidate = strtolower(trim($candidate));
-                        if (in_array($candidate, $validEmails)) {
-                            $searchTo = $candidate;
-                            $foundValid = true;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            // Descargar el cuerpo del correo de forma segura (Lazy Loading)
-            $fullMessage = $folder->query()->setFetchBody(true)->getMessageByUid($uid);
-            $body = $fullMessage ? $fullMessage->getHTMLBody() : '';
-            if (empty($body)) {
-                $body = $fullMessage ? $fullMessage->getTextBody() : $message->getTextBody();
-            }
-
-            if (is_array($body)) {
-                $body = implode("\n", $body);
-            } elseif (!is_string($body)) {
-                $body = (string) $body;
-            }
-
+            // === 2. VALIDAR PLATAFORMA (ANTES DE DESCARGAR EL CUERPO) ===
             // Validar Asunto (Subject) con Inteligencia Artificial (Fuzzy Matching)
             $subject = (string) $message->getSubject();
             $asciiSubject = \Illuminate\Support\Str::ascii($subject);
@@ -238,16 +211,46 @@ class ImapConnector
                 }
             }
 
-            if ($matchedPlatform) {
-                return [
-                    'body'          => $body,
-                    'to'            => $searchTo,
-                    'subject'       => $subject,
-                    'platform_name' => $matchedPlatform
-                ];
+            // Si no es de ninguna plataforma que nos importe, abortar al instante
+            // (Ahorra peticiones de red gigantescas al servidor IMAP)
+            if (!$matchedPlatform) {
+                return null;
             }
 
-            return null;
+            // === 3. DESCARGAR CUERPO SOLO SI ES VALIDO (Lazy Loading Real) ===
+            $fullMessage = $folder->query()->setFetchBody(true)->getMessageByUid($uid);
+            $body = $fullMessage ? $fullMessage->getHTMLBody() : '';
+            if (empty($body)) {
+                $body = $fullMessage ? $fullMessage->getTextBody() : $message->getTextBody();
+            }
+
+            if (is_array($body)) {
+                $body = implode("\n", $body);
+            } elseif (!is_string($body)) {
+                $body = (string) $body;
+            }
+
+            // Fallback Extremo: Buscar dentro del texto del correo ("Te enviamos el codigo a mipapa...")
+            if (!$foundValid) {
+                $bodyText = $fullMessage ? $fullMessage->getTextBody() : '';
+                if (!empty($bodyText) && preg_match_all('/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/i', $bodyText, $matches)) {
+                    foreach ($matches[0] as $candidate) {
+                        $candidate = strtolower(trim($candidate));
+                        if (in_array($candidate, $validEmails)) {
+                            $searchTo = $candidate;
+                            $foundValid = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            return [
+                'body'          => $body,
+                'to'            => $searchTo,
+                'subject'       => $subject,
+                'platform_name' => $matchedPlatform
+            ];
 
         } catch (\Exception $e) {
             Log::error('Error buscando email por UID en Webklex', ['uid' => $uid, 'error' => $e->getMessage()]);

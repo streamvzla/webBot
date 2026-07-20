@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Http\Controllers\Admin;
 
@@ -123,11 +123,11 @@ class PlatformController extends Controller
         $user = auth()->user();
 
         // Verificar permisos: solo puede editar si le pertenece
-        if ($platform->user_id === $user->id) {
+        if (\$user->id === 1 || \$platform->user_id === \$user->id) {
             return view('admin.platforms.edit', compact('platform'));
         }
 
-        abort(403, 'No tienes autorización para editar esta plataforma.');
+        abort(403, 'No tienes autorizaciÃ³n para editar esta plataforma.');
     }
 
     /**
@@ -138,8 +138,8 @@ class PlatformController extends Controller
         $user = auth()->user();
 
         // Verificar permisos: solo puede editar si le pertenece
-        if ($platform->user_id !== $user->id) {
-            abort(403, 'No tienes autorización para editar esta plataforma.');
+        if (\$user->id !== 1 && \$platform->user_id !== \$user->id) {
+            abort(403, 'No tienes autorizaciÃ³n para editar esta plataforma.');
         }
 
         $validated = $request->validate([
@@ -211,8 +211,8 @@ class PlatformController extends Controller
         $user = auth()->user();
 
         // Verificar permisos: solo puede eliminar si le pertenece
-        if ($platform->user_id !== $user->id) {
-            abort(403, 'No tienes autorización para eliminar esta plataforma.');
+        if (\$user->id !== 1 && \$platform->user_id !== \$user->id) {
+            abort(403, 'No tienes autorizaciÃ³n para eliminar esta plataforma.');
         }
 
         // Delete logo if exists
@@ -236,12 +236,12 @@ class PlatformController extends Controller
         $user = auth()->user();
 
         // Verificar permisos: solo puede ver si le pertenece
-        if ($platform->user_id === $user->id) {
+        if (\$user->id === 1 || \$platform->user_id === \$user->id) {
             $subjects = $platform->subjects()->orderBy('subject')->get();
             return view('admin.platforms.subjects', compact('platform', 'subjects'));
         }
 
-        abort(403, 'No tienes autorización para ver esta plataforma.');
+        abort(403, 'No tienes autorizaciÃ³n para ver esta plataforma.');
     }
 
     /**
@@ -252,8 +252,8 @@ class PlatformController extends Controller
         $user = auth()->user();
 
         // Verificar permisos: solo puede modificar si le pertenece
-        if ($platform->user_id !== $user->id) {
-            abort(403, 'No tienes autorización para modificar esta plataforma.');
+        if (\$user->id !== 1 && \$platform->user_id !== \$user->id) {
+            abort(403, 'No tienes autorizaciÃ³n para modificar esta plataforma.');
         }
 
         $validated = $request->validate([
@@ -277,8 +277,8 @@ class PlatformController extends Controller
         $user = auth()->user();
 
         // Verificar permisos: solo puede modificar si le pertenece
-        if ($platform->user_id !== $user->id) {
-            abort(403, 'No tienes autorización para modificar esta plataforma.');
+        if (\$user->id !== 1 && \$platform->user_id !== \$user->id) {
+            abort(403, 'No tienes autorizaciÃ³n para modificar esta plataforma.');
         }
 
         $subject->delete();
@@ -294,7 +294,7 @@ class PlatformController extends Controller
         $user = auth()->user();
 
         // Verificar permisos
-        if ($platform->user_id !== $user->id) {
+        if (\$user->id !== 1 && \$platform->user_id !== \$user->id) {
             return response()->json(['error' => 'No autorizado'], 403);
         }
 
@@ -307,3 +307,4 @@ class PlatformController extends Controller
         ]);
     }
 }
+

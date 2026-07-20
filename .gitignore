@@ -17,3 +17,12 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
+
+# Archivos de deployment local (no van al repo)
+/archivos_para_filezilla/
+archivos_para_filezilla - Acceso directo.lnk
+*.zip
+*.lnk
+centinela.log
+add_column.php
+add_toast.cjs

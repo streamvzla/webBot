@@ -345,7 +345,8 @@ nohup docker exec -u sail mi-panel-laravel.test-1 php artisan imap:sentinel > ce
 - 🆕 Aislamiento hermético: Franquicias y Revendedores solo ven sus propios Clientes
 - 🆕 Login inteligente con detección automática de rol
 - 🆕 Fix: Email case-insensitive en login (compatibilidad móviles)
-- 🆕 Sistema de garantías
+- 🆕 Sistema de garantías (congelamiento de tiempo automático)
+- 🆕 Fix Garantías: Aislamiento estricto de tickets y acceso desbloqueado para Súper Admin
 - 🆕 Carga masiva de perfiles (Mass Upload)
 - 🆕 Sistema Anti-Spam con IP Ban automático
 - 🆕 Autenticación 2FA

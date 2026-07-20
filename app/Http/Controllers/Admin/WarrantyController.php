@@ -18,12 +18,10 @@ class WarrantyController extends Controller
             ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END ASC")
             ->orderBy('created_at', 'desc');
             
-        if ($user->id !== 1) {
-            $descendants = $user->getDescendantsIds();
-            $query->whereHas('client', function($q) use ($descendants) {
-                $q->whereIn('user_id', $descendants);
-            });
-        }
+        // Aislamiento estricto: Cada quien solo ve las garantías de sus propios clientes
+        $query->whereHas('client', function($q) {
+            $q->where('user_id', auth()->id());
+        });
 
         $warranties = $query->get();
 
@@ -33,9 +31,8 @@ class WarrantyController extends Controller
               ->orWhereDate('allowed_email_client.expires_at', '>=', \Carbon\Carbon::now()->toDateString());
         }]);
         
-        if ($user->id !== 1) {
-            $clientsQuery->whereIn('user_id', $user->getDescendantsIds());
-        }
+        // Aislamiento estricto
+        $clientsQuery->where('user_id', auth()->id());
         $clients = $clientsQuery->get()->filter(function($client) {
             return $client->allowedEmails->count() > 0;
         });
@@ -55,11 +52,9 @@ class WarrantyController extends Controller
     public function show(WarrantyRequest $warranty)
     {
         $user = auth()->user();
-        if ($user->id !== 1) {
-            $descendants = $user->getDescendantsIds();
-            if (!in_array($warranty->client->user_id, $descendants)) {
-                abort(403, 'No autorizado para ver esta garantía.');
-            }
+        // Aislamiento estricto
+        if ($warranty->client->user_id !== $user->id) {
+            abort(403, 'No autorizado para ver esta garantía.');
         }
         return view('admin.warranties.show', compact('warranty'));
     }
@@ -79,11 +74,9 @@ class WarrantyController extends Controller
         $clientId = null;
         if ($request->report_type === 'client') {
             $client = \App\Models\Client::findOrFail($request->client_id);
-            if ($user->id !== 1) {
-                $descendants = $user->getDescendantsIds();
-                if (!in_array($client->user_id, $descendants)) {
-                    abort(403, 'No autorizado para reportar garantía de este cliente.');
-                }
+            // Aislamiento estricto
+            if ($client->user_id !== $user->id) {
+                abort(403, 'No autorizado para reportar garantía de este cliente.');
             }
             $clientId = $client->id;
         }
@@ -110,15 +103,14 @@ class WarrantyController extends Controller
     public function update(Request $request, WarrantyRequest $warranty)
     {
         $user = auth()->user();
-        if ($user->role !== 'admin') {
+        // Permitir a Administradores o al Super Admin (ID 1)
+        if ($user->role !== 'admin' && $user->id !== 1) {
             abort(403, 'Solo los administradores pueden procesar las garantías.');
         }
 
-        if ($user->id !== 1) {
-            $descendants = $user->getDescendantsIds();
-            if (!in_array($warranty->client->user_id, $descendants)) {
-                abort(403, 'No autorizado para editar esta garantía.');
-            }
+        // Aislamiento estricto
+        if ($warranty->client->user_id !== $user->id) {
+            abort(403, 'No autorizado para editar esta garantía.');
         }
         $request->validate([
             'status' => 'required|in:approved,rejected,resolved',

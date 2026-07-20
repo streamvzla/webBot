@@ -143,22 +143,19 @@ class ImapConnector
                             $foundValid = true;
                             break;
                         }
-                        // Guardar por si acaso ninguno sirve (PERO ignorar el correo maestro)
-                        if ($searchTo === 'generico@streamvzla.com' && $candidate !== strtolower(trim($this->emailAccount->email))) {
-                            $searchTo = $candidate;
-                        }
                     }
                 }
             }
 
-            // 1.5 Buscar específicamente en cabeceras de reenvío para un fallback seguro
+            // 1.5 Buscar específicamente en cabeceras de reenvío para un fallback seguro (SOLO SI ESTA EN LA BD)
             if (!$foundValid && $searchTo === 'generico@streamvzla.com') {
                 $rawHeader = $message->getHeader()->raw;
                 if (preg_match_all('/(?:Delivered-To|Envelope-To|X-Forwarded-To):\s*<?([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})>?/i', $rawHeader, $forwardMatches)) {
                     foreach ($forwardMatches[1] as $candidate) {
                         $candidate = strtolower(trim($candidate));
-                        if ($candidate !== strtolower(trim($this->emailAccount->email))) {
+                        if (in_array($candidate, $validEmails)) {
                             $searchTo = $candidate;
+                            $foundValid = true;
                             break;
                         }
                     }

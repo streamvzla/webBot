@@ -149,6 +149,12 @@ class ServerList extends Component
             };
             $mailbox    = "{{$server->imap_host}:{$server->imap_port}{$flags}}";
             @imap_errors();
+            
+            // [MODO DIOS] Forzar timeout corto para evitar que Nginx lance 504 Gateway Time-out
+            imap_timeout(IMAP_OPENTIMEOUT, 10);
+            imap_timeout(IMAP_READTIMEOUT, 10);
+            imap_timeout(IMAP_WRITETIMEOUT, 10);
+            
             $connection = @imap_open($mailbox, $server->username, $password, OP_READONLY, 1);
 
             if (!$connection) {

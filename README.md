@@ -321,6 +321,12 @@ nohup docker exec -u sail mi-panel-laravel.test-1 php artisan imap:sentinel > ce
 ```
 > `nohup` asegura que el Centinela **NO muera** al cerrar la consola SSH. Corre en las sombras indefinidamente procesando correos entrantes.
 
+#### Comando Rápido (Para reiniciar el Centinela) 🔄
+Si necesitas aplicar cambios, liberar un congelamiento o simplemente reiniciar el motor asíncrono, asegúrate de estar en `/var/www/mi-panel` y ejecuta esta línea mágica:
+```bash
+pkill -f "imap:sentinel"; sleep 1; nohup php artisan imap:sentinel > centinela.log 2>&1 & tail -f centinela.log
+```
+
 ---
 
 ### ⚡ Comandos Extra — Modo Dios

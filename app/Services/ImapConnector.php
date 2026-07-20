@@ -144,8 +144,8 @@ class ImapConnector
                             $foundValid = true;
                             break;
                         }
-                        // Guardar por si acaso ninguno sirve
-                        if ($searchTo === 'generico@streamvzla.com') {
+                        // Guardar por si acaso ninguno sirve (PERO ignorar el correo maestro)
+                        if ($searchTo === 'generico@streamvzla.com' && $candidate !== strtolower(trim($this->emailAccount->email))) {
                             $searchTo = $candidate;
                         }
                     }
@@ -164,8 +164,8 @@ class ImapConnector
                             break;
                         }
                         // Si no es valido pero seguimos en generico, guardarlo por si acaso
-                        // Ignorar correos obvios del remitente
-                        if ($searchTo === 'generico@streamvzla.com' && !str_contains($candidate, 'netflix') && !str_contains($candidate, 'disney') && !str_contains($candidate, 'max') && !str_contains($candidate, 'amazon') && !str_contains($candidate, 'google')) {
+                        // Ignorar correos obvios del remitente y el correo maestro
+                        if ($searchTo === 'generico@streamvzla.com' && $candidate !== strtolower(trim($this->emailAccount->email)) && !str_contains($candidate, 'netflix') && !str_contains($candidate, 'disney') && !str_contains($candidate, 'max') && !str_contains($candidate, 'amazon') && !str_contains($candidate, 'google')) {
                             $searchTo = $candidate;
                         }
                     }
@@ -184,7 +184,7 @@ class ImapConnector
                             break;
                         }
                         // Si no es valido pero seguimos en generico, guardarlo por si acaso
-                        if ($searchTo === 'generico@streamvzla.com' && !str_contains($candidate, 'netflix') && !str_contains($candidate, 'disney') && !str_contains($candidate, 'max') && !str_contains($candidate, 'amazon') && !str_contains($candidate, 'google')) {
+                        if ($searchTo === 'generico@streamvzla.com' && $candidate !== strtolower(trim($this->emailAccount->email)) && !str_contains($candidate, 'netflix') && !str_contains($candidate, 'disney') && !str_contains($candidate, 'max') && !str_contains($candidate, 'amazon') && !str_contains($candidate, 'google')) {
                             $searchTo = $candidate;
                         }
                     }

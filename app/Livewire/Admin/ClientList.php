@@ -51,7 +51,8 @@ class ClientList extends Component
             $query->where('is_active', (bool)$this->status);
         }
 
-        if ($user && $user->role === 'user') {
+        // Aislamiento estricto (Aplica para todos los roles)
+        if ($user) {
             $query->where('user_id', $user->id);
         }
 

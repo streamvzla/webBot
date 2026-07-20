@@ -32,10 +32,9 @@ class ClientController extends Controller
                 return $query->where('is_active', $request->boolean('status'));
             });
 
-        // Solo Super Admin (ID 1) puede ver a todos. Todos los demás ven solo su red.
-        if (auth()->id() !== 1) {
-            $query->whereIn('user_id', auth()->user()->getDescendantsIds());
-        }
+        // Aislamiento estricto: Cada usuario (Super Admin, Franquicia, Revendedor) SOLO ve sus propios clientes.
+        $query->where('user_id', auth()->id());
+
 
         $clients = $query->orderBy('name')->paginate(20);
 

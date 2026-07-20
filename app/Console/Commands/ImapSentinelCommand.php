@@ -17,7 +17,7 @@ class ImapSentinelCommand extends Command
 
     private const LOOKBACK_HOURS   = 2;
     private const CODE_TTL_MINUTES = 15;
-    private const IMAP_TIMEOUT     = 10;
+    private const IMAP_TIMEOUT     = 5; // Limite maximo absoluto por servidor
     private const SLEEP_BASE       = 5;
     private const SLEEP_JITTER     = 3;
     private const MAX_ERRORS       = 3;
@@ -28,6 +28,10 @@ class ImapSentinelCommand extends Command
     {
         $this->info('Iniciando Robot Centinela IMAP...');
         Log::info('[Centinela] Proceso iniciado');
+
+        // [LIMITADOR EXTREMO] Forzar que PHP aborte cualquier conexion muerta a los 5 segundos
+        // para garantizar que pase al siguiente servidor instantaneamente
+        ini_set('default_socket_timeout', 5);
 
         while (true) {
             try {

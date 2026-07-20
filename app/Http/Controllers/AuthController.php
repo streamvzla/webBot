@@ -37,8 +37,11 @@ class AuthController extends Controller
 
         $remember = $request->boolean('remember');
 
+        // Normalizar email a minúsculas para evitar problemas con mayúsculas automáticas del teclado móvil
+        $email = strtolower(trim($credentials['email']));
+
         // 1. Intentar iniciar sesión como Cliente
-        $client = Client::where('email', $credentials['email'])->first();
+        $client = Client::whereRaw('LOWER(email) = ?', [$email])->first();
 
         if ($client && Hash::check($credentials['password'], $client->password)) {
             if (!$client->is_active) {
@@ -62,7 +65,7 @@ class AuthController extends Controller
         }
 
         // 2. Si no es cliente o la contraseña no coincidió, intentar como Administrador/User
-        $user = User::where('email', $credentials['email'])->first();
+        $user = User::whereRaw('LOWER(email) = ?', [$email])->first();
 
         if ($user && Hash::check($credentials['password'], $user->password)) {
             if (!$user->is_active) {

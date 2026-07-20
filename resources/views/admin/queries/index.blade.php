@@ -50,13 +50,13 @@
             </div>
         </div>
         
-        @if($queries->count() > 0 && auth()->user()->role === 'admin')
+        @if($queries->count() > 0 && (auth()->user()->role === 'admin' || auth()->user()->id === 1))
         <div style="display:flex;align-items:center;flex-shrink:0;">
-            <form action="{{ route('admin.queries.truncate') }}" method="POST" data-confirm="PELIGRO: Se eliminarán TODOS los registros permanentemente. ¿Deseas purgar la base de datos de consultas?" data-confirm-title="🛑 Destrucción Total" data-confirm-btn="Sí, aniquilar registros">
+            <form action="{{ route('admin.queries.truncate') }}" method="POST" data-confirm="PELIGRO: Se eliminarán TODOS tus registros de consultas permanentemente. ¿Deseas purgar tu historial?" data-confirm-title="🛑 Limpiar Historial" data-confirm-btn="Sí, borrar mis registros">
                 @csrf
                 <button type="submit" class="ae-btn-purge">
                     <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                    Purgar Base de Datos
+                    Limpiar Mi Historial
                 </button>
             </form>
         </div>

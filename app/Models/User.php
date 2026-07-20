@@ -53,11 +53,10 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-            'is_active' => 'boolean',
-            'last_login_at' => 'datetime',
+            'is_active'         => 'boolean',
+            'last_login_at'     => 'datetime',
             'subscription_ends_at' => 'datetime',
-            'grace_days' => 'integer',
+            'grace_days'        => 'integer',
         ];
     }
 

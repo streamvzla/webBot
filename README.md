@@ -342,6 +342,7 @@ nohup docker exec -u sail mi-panel-laravel.test-1 php artisan imap:sentinel > ce
 
 ### v2.0 — Julio 2026
 - 🆕 Sistema multi-tenant completo con aislamiento estricto
+- 🆕 Aislamiento hermético: Franquicias y Revendedores solo ven sus propios Clientes
 - 🆕 Login inteligente con detección automática de rol
 - 🆕 Fix: Email case-insensitive en login (compatibilidad móviles)
 - 🆕 Sistema de garantías

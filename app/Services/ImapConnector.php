@@ -101,6 +101,8 @@ class ImapConnector
             $messages = $folder->query()
                 ->unseen()
                 ->since(now()->subDays(3))
+                ->setFetchOrderDesc() // Más recientes primero
+                ->limit(50)           // Máximo 50 para evitar colapsar la memoria y el tiempo
                 ->setFetchBody(false)
                 ->get();
 

@@ -106,7 +106,7 @@ class ImapConnector
 
             if (!$isMassiveAccount) {
                 // ESTRATEGIA NORMAL (Cuentas regulares)
-                $messages = $folder->query()->unseen()->setFetchBody(false)->limit(20, 1)->get();
+                $messages = $folder->query()->setFetchBody(false)->limit(20, 1)->get();
                 $uids = [];
                 foreach ($messages as $msg) {
                     $uids[] = (int) $msg->getUid();
@@ -129,7 +129,7 @@ class ImapConnector
                 $protocol = $this->client->getConnection();
 
                 if (!$protocol || !method_exists($protocol, 'fetch')) {
-                    $messages = $folder->query()->unseen()->setFetchBody(false)->limit(25, 1)->get();
+                    $messages = $folder->query()->setFetchBody(false)->limit(25, 1)->get();
                     $uids = [];
                     foreach ($messages as $msg) { $uids[] = (int) $msg->getUid(); }
                 } else {
@@ -160,11 +160,10 @@ class ImapConnector
                         }
                         
                         if (preg_match('/UID["\'\s:=]+(\d+)/i', $lineStr, $m)) {
-                            if (stripos($lineStr, 'Seen') === false) {
-                                $uid = (int) $m[1];
-                                if ($uid > 0) {
-                                    $uids[] = $uid;
-                                }
+                            // Ignoramos si está leído o no, atrapamos todos los UIDs recientes
+                            $uid = (int) $m[1];
+                            if ($uid > 0) {
+                                $uids[] = $uid;
                             }
                         }
                     }
@@ -208,6 +207,19 @@ class ImapConnector
         }
 
         try {
+            // REGLA DEL TIEMPO (15 MINUTOS):
+            // Como ya no filtramos por "No Leídos" para evitar perder correos si alguien los abre en Gmail,
+            // descartamos por seguridad cualquier correo que tenga más de 15 minutos de antigüedad.
+            try {
+                $dateArr = $message->getDate();
+                if (!empty($dateArr)) {
+                    $date = $dateArr[0]; // Instancia de Carbon
+                    if ($date && $date->diffInMinutes(now()) > 15) {
+                        return null; // Correo muy viejo, ignorar
+                    }
+                }
+            } catch (\Throwable $ex) {}
+
             $uid = $message->getUid();
             $folder = $this->client->getFolder('INBOX');
 

@@ -99,7 +99,13 @@ class ProcessImapAccountJob implements ShouldQueue
             foreach ($messagesToProcess as $message) {
                 $uid = (string) $message->getUid();
 
-                // Verificar en memoria RAM (Ultra rápido)
+                // NINJA REAL: Si el correo ya fue marcado como LEIDO (Seen) en el servidor de Google,
+                // significa que ya lo procesamos (o lo omitimos por ser basura). Lo saltamos en 0.001s.
+                if ($message->hasFlag('Seen') || $message->hasFlag('SEEN') || $message->hasFlag('\\Seen')) {
+                    continue;
+                }
+
+                // Verificar en memoria RAM (Ultra rápido por si acaso falló el flag)
                 if (in_array($uid, $alreadyProcessed)) {
                     continue;
                 }

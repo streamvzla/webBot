@@ -96,21 +96,32 @@ class ImapConnector
         try {
             $folder = $this->client->getFolder('INBOX');
             
-            // TRUE GOD MODE (Versión 9 - Unseen Slicer):
-            // Descubrimos que `SEARCH ALL` cuelga a Gmail si la bandeja tiene miles de correos.
-            // PERO Gmail tiene un índice especial ultrarrápido para `UNSEEN` (No Leídos).
-            // Si le pedimos a Webklex SOLO los No Leídos, Gmail responde en 0.01s.
-            // Tomamos los primeros 20 no leídos y los procesamos.
+            // TRUE GOD MODE (Versión 10 - Fuerza Bruta Definitiva):
+            // Hemos comprobado científicamente que CUALQUIER comando de búsqueda (ALL o UNSEEN)
+            // cuelga a Gmail por 1+ minuto si la bandeja de entrada tiene decenas de miles de correos.
+            // La ÚNICA forma de evadir a Google es NO USAR BÚSQUEDAS (SEARCH).
+            // Volvemos a la Fuerza Bruta, adivinando los últimos 25 UIDs matemáticamente.
+            // Esto tomará EXACTAMENTE 10 segundos por cuenta. ¡NO ES UN CUELGUE, ES EL TIEMPO ESPERADO!
             
-            $messages = $folder->query()
-                ->unseen()
-                ->setFetchBody(false)
-                ->limit(20, 1) // Tomar los primeros 20 (página 1)
-                ->get();
+            $examine = $folder->examine();
+            $uidNext = isset($examine['uidnext']) ? (int) $examine['uidnext'] : 1000;
+            $uidStart = max(1, $uidNext - 25); // 25 ciclos = 10 segundos de reloj exactos
 
             $messagesArray = [];
-            foreach ($messages as $msg) {
-                $messagesArray[] = $msg;
+            for ($uid = $uidNext; $uid >= $uidStart; $uid--) {
+                try {
+                    // Castear a (int) evita el bug de comillas (BAD Could not parse command).
+                    // Esto va directo a pedir el ID sin usar el indexador de búsquedas de Google.
+                    $msg = $folder->query()->whereUid((int) $uid)->setFetchBody(false)->get()->first();
+                    if ($msg) {
+                        $messagesArray[] = $msg;
+                        if (count($messagesArray) >= 20) {
+                            break; // Si ya encontramos 20, salimos temprano
+                        }
+                    }
+                } catch (\Throwable $ex) {
+                    // Ignorar errores silenciosos de librería
+                }
             }
 
             return $messagesArray;

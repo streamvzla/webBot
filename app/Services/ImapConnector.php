@@ -138,6 +138,8 @@ class ImapConnector
             $uids = [];
             foreach ($fetchData as $seqno => $data) {
                 $uid = null;
+                $isUnseen = true;
+
                 if (is_array($data)) {
                     $uid = $data['uid'] ?? $data['UID'] ?? null;
                     if (is_array($uid)) {
@@ -145,10 +147,26 @@ class ImapConnector
                     } else {
                         $uid = (int) $uid;
                     }
+
+                    // Verificar FLAGS para saltar los ya leídos y no perder tiempo cargándolos
+                    $flags = $data['flags'] ?? $data['FLAGS'] ?? [];
+                    if (is_array($flags)) {
+                        foreach ($flags as $flag) {
+                            if (stripos((string) $flag, 'Seen') !== false) {
+                                $isUnseen = false;
+                                break;
+                            }
+                        }
+                    } elseif (is_string($flags)) {
+                        if (stripos($flags, 'Seen') !== false) {
+                            $isUnseen = false;
+                        }
+                    }
                 } elseif (is_numeric($data)) {
                     $uid = (int) $data;
                 }
-                if ($uid && $uid > 0) {
+
+                if ($uid && $uid > 0 && $isUnseen) {
                     $uids[] = $uid;
                 }
             }
@@ -158,7 +176,10 @@ class ImapConnector
                 $rawLines = $rawFetch->getResponse();
                 foreach ($rawLines as $line) {
                     if (is_string($line) && preg_match('/UID\s+(\d+)/i', $line, $m)) {
-                        $uids[] = (int) $m[1];
+                        // Si la línea tiene \Seen, la ignoramos
+                        if (stripos($line, 'Seen') === false) {
+                            $uids[] = (int) $m[1];
+                        }
                     }
                 }
             }

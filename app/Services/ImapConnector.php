@@ -96,33 +96,32 @@ class ImapConnector
         try {
             $folder = $this->client->getFolder('INBOX');
             
-            // TRUE GOD MODE (Versión 5 - Paginación Nativa):
-            // La fuerza bruta por UID funciona, pero demora mucho si Google es lento respondiendo 1x1.
-            // La solución definitiva es usar la paginación interna de Webklex. 
-            // Webklex pide TODOS los UIDs (lo cual es instantáneo), y PHP extrae la "última página".
-            // Así evitamos comandos raros, comillas dobles, fechas lentas y tarpits.
+            // TRUE GOD MODE (Versión 6 - Fuerza Bruta Optimizada):
+            // La Paginación de Webklex descarga TODOS los headers antes de paginar (crashea PHP con 19,000 correos).
+            // Volvemos a la Fuerza Bruta, pero ahora usamos `getMessage()` directo en lugar del Query Builder.
+            // Esto reduce las peticiones a la mitad (1 solo roundtrip por correo) y esquiva el SEARCH.
             
             $examine = $folder->examine();
-            $totalMessages = isset($examine['exists']) ? (int) $examine['exists'] : 1000;
-            
-            $perPage = 20;
-            $lastPage = max(1, (int) ceil($totalMessages / $perPage));
-
-            $paginator = $folder->query()
-                ->all()
-                ->setFetchBody(false)
-                ->paginate($perPage, $lastPage);
-
-            // items() devuelve un Collection de los últimos 20 correos
-            $messages = $paginator->items();
+            $uidNext = isset($examine['uidnext']) ? (int) $examine['uidnext'] : 1000;
+            $uidStart = max(1, $uidNext - 60); // Máximo buscamos 60 posiciones hacia atrás (toma 2 segundos)
 
             $messagesArray = [];
-            foreach ($messages as $msg) {
-                $messagesArray[] = $msg;
+            for ($uid = $uidNext; $uid >= $uidStart; $uid--) {
+                try {
+                    // getMessage(uid, sequence, fetchBody) -> false para no descargar el cuerpo pesado
+                    $msg = $folder->getMessage((int) $uid, null, false);
+                    if ($msg) {
+                        $messagesArray[] = $msg;
+                        if (count($messagesArray) >= 20) {
+                            break;
+                        }
+                    }
+                } catch (\Exception $ex) {
+                    // Ignorar UIDs que fueron borrados
+                }
             }
 
-            // Revertir para tener el más nuevo de primero
-            return array_reverse($messagesArray);
+            return $messagesArray;
         } catch (\Exception $e) {
             echo "  [ERROR IMAP] " . $e->getMessage() . "\n";
             Log::error('Error obteniendo emails recientes con Webklex', ['error' => $e->getMessage()]);

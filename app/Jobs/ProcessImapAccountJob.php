@@ -15,7 +15,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Queue\Middleware\WithoutOverlapping;
 
 class ProcessImapAccountJob implements ShouldQueue
 {
@@ -23,19 +22,6 @@ class ProcessImapAccountJob implements ShouldQueue
 
     public $account;
     const CODE_TTL_MINUTES = 30;
-
-    /**
-     * Get the middleware the job should pass through.
-     *
-     * @return array<int, object>
-     */
-    public function middleware(): array
-    {
-        // Evita que dos clones intenten leer la misma cuenta al mismo tiempo.
-        // Si el clon 1 todavía está leyendo, el clon 2 aborta la misión (dontRelease).
-        // El lock expira automáticamente a los 60 segundos por si el clon muere (pkill).
-        return [(new WithoutOverlapping($this->account->id))->dontRelease()->expireAfter(60)];
-    }
 
     /**
      * Create a new job instance.

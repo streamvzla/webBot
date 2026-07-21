@@ -56,10 +56,22 @@ class ProcessImapAccountJob implements ShouldQueue
             ->values()
             ->toArray();
 
+        // Variable estática para mantener la conexión viva entre Jobs (ya que el worker es un daemon)
+        static $activeConnectors = [];
         $connector = null;
+
         try {
-            $connector = new ImapConnector($this->account);
-            $connector->connect(); // <-- Faltaba esta linea!
+            if (!isset($activeConnectors[$this->account->id])) {
+                $connector = new ImapConnector($this->account);
+                $connector->connect();
+                $activeConnectors[$this->account->id] = $connector;
+            } else {
+                $connector = $activeConnectors[$this->account->id];
+                if (!$connector->isConnected()) {
+                    $connector->connect();
+                }
+            }
+
             echo "{$echoPrefix} Conectado OK\n";
 
             $messages = $connector->getRecentEmails();
@@ -75,12 +87,10 @@ class ProcessImapAccountJob implements ShouldQueue
             echo "{$echoPrefix} Procesando los " . count($messagesToProcess) . " más recientes...\n";
 
             // === CARGA EN BLOQUE A BD (Optimización N+1) ===
-            // Extraer todos los UIDs de los mensajes a procesar
             $uids = array_map(function ($message) {
                 return (string) $message->getUid();
             }, $messagesToProcess);
 
-            // Preguntar a MySQL de un solo golpe cuáles de estos UIDs ya están guardados
             $alreadyProcessed = ExtractedCode::where('email_account_id', $this->account->id)
                 ->whereIn('uid', $uids)
                 ->pluck('uid')
@@ -91,12 +101,10 @@ class ProcessImapAccountJob implements ShouldQueue
                 $uid = (string) $message->getUid();
 
                 // NINJA REAL: Si el correo ya fue marcado como LEIDO (Seen) en el servidor de Google,
-                // significa que ya lo procesamos (o lo omitimos por ser basura). Lo saltamos en 0.001s.
                 if ($message->hasFlag('Seen') || $message->hasFlag('SEEN') || $message->hasFlag('\\Seen')) {
                     continue;
                 }
 
-                // Verificar en memoria RAM (Ultra rápido por si acaso falló el flag)
                 if (in_array($uid, $alreadyProcessed)) {
                     continue;
                 }
@@ -113,8 +121,13 @@ class ProcessImapAccountJob implements ShouldQueue
                 'account' => $this->account->email,
                 'error'   => $e->getMessage(),
             ]);
-        } finally {
+            // Si hay un error, forzamos la desconexión y destruimos el conector cacheado
             try { $connector?->disconnect(); } catch (\Throwable $ex) {}
+            unset($activeConnectors[$this->account->id]);
+        } finally {
+            // NOTA: Ya no nos desconectamos en el 'finally' si fue exitoso, 
+            // así reutilizamos la sesión IMAP en el próximo Job.
+            
             // Liberar el Semáforo para que el Director pueda enviar una nueva revisión
             Cache::forget('imap_account_' . $this->account->id);
         }

@@ -127,7 +127,19 @@ class ImapConnector
             $rawFetch = $protocol->fetch(['UID', 'FLAGS'], $from, $total, 0);
 
             $uids = [];
-            $rawLines = $rawFetch->response ?? [];
+            $rawLines = [];
+            
+            // Usar Reflexión para extraer la propiedad interna (response) sin importar si es protected/private
+            try {
+                $ref = new \ReflectionClass($rawFetch);
+                foreach ($ref->getProperties() as $prop) {
+                    $prop->setAccessible(true);
+                    $val = $prop->getValue($rawFetch);
+                    if (is_array($val)) {
+                        $rawLines = array_merge($rawLines, $val);
+                    }
+                }
+            } catch (\Exception $e) {}
 
             // Evitar que array() de Webklex se cuelgue procesando respuestas gigantescas
             foreach ($rawLines as $line) {

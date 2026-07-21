@@ -62,8 +62,7 @@ class ImapConnector
             'validate_cert' => false,
             'username'      => $this->emailAccount->username ?? $this->emailAccount->email,
             'password'      => $password,
-            'protocol'      => 'imap',
-            'timeout'       => 15
+            'protocol'      => 'imap'
         ]);
 
         try {
@@ -104,33 +103,70 @@ class ImapConnector
             // Sin SEARCH. Sin Tarpit. Sin segunda conexión. Sin imap_open().
             // Luego usamos getMessageByUid() que ya sabemos que funciona y es rápido.
 
-            // === ESTRATEGIA HÍBRIDA ===
-            // Las cuentas normales usan la función nativa unseen() que es 100% fiable para detectar correos nuevos.
-            // Las cuentas masivas (Goku) usan el bypass V12 directo por secuencias para evitar Tarpits de Gmail.
-            $isMassiveAccount = stripos($this->emailAccount->email, 'ssjgoku2025') !== false;
+            $examine = $folder->examine();
+            $total = isset($examine['exists']) ? (int) $examine['exists'] : 0;
 
-            if (!$isMassiveAccount) {
-                // ESTRATEGIA NORMAL (Cuentas regulares)
+            if ($total === 0) {
+                return [];
+            }
+
+            $from = max(1, $total - 19); // Últimos 20 por número de secuencia
+
+            // Obtener el protocolo interno de Webklex
+            $protocol = $this->client->getConnection();
+
+            if (!$protocol || !method_exists($protocol, 'fetch')) {
+                // Fallback: si el protocolo no tiene fetch(), buscar solo no leídos
+                echo "  [INFO] Usando fallback UNSEEN\n";
                 $messages = $folder->query()->unseen()->setFetchBody(false)->limit(20, 1)->get();
-                $uids = [];
-                foreach ($messages as $msg) {
-                    $uids[] = (int) $msg->getUid();
-                }
-            } else {
-                // ESTRATEGIA MODO DIOS V12 (Solo para Goku)
-                // Por petición del usuario: En lugar de secuencias (que colgó) o escanear 30,000 mensajes,
-                // le pedimos a Gmail que filtre estricta y ÚNICAMENTE los correos desde ayer/hoy.
-                // Gmail indexa las fechas instantáneamente, evitando el Tarpit.
-                $messages = $folder->query()
-                                   ->since(now()->subDays(1)) // Desde ayer (por seguridad de zona horaria)
-                                   ->unseen()                 // Solo no leídos
-                                   ->setFetchBody(false)      // No descargar el cuerpo del correo
-                                   ->limit(10, 1)             // Traer máximo 10
-                                   ->get();
+                return array_values($messages->toArray());
+            }
+
+            // FETCH directo por rango de secuencia — Cero SEARCH, Cero Tarpit
+            // Retorna un objeto Webklex\PHPIMAP\Connection\Protocols\Response
+            $rawFetch = $protocol->fetch(['UID', 'FLAGS'], $from, $total, 0);
+
+            $uids = [];
+            $rawLines = [];
+            
+            // Usar Reflexión para extraer la propiedad interna (response) sin importar si es protected/private
+            try {
+                // Si Webklex devolvió un arreglo de respuestas (múltiples secuencias)
+                $responses = is_array($rawFetch) ? $rawFetch : [$rawFetch];
                 
-                $uids = [];
-                foreach ($messages as $msg) {
-                    $uids[] = (int) $msg->getUid();
+                foreach ($responses as $respObj) {
+                    if (!is_object($respObj)) continue;
+                    $ref = new \ReflectionClass($respObj);
+                    foreach ($ref->getProperties() as $prop) {
+                        $prop->setAccessible(true);
+                        $val = $prop->getValue($respObj);
+                        if (is_array($val)) {
+                            $rawLines = array_merge($rawLines, $val);
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Silenciar errores de reflexión para evitar cuelgues FATALES
+            }
+
+            // Evitar que array() de Webklex se cuelgue procesando respuestas gigantescas
+            foreach ($rawLines as $line) {
+                // Si la línea es un arreglo (quizás anidado profundo por Webklex)
+                // lo convertimos a JSON seguro para no sufrir "Array to string conversion"
+                if (is_array($line) || is_object($line)) {
+                    $lineStr = json_encode($line);
+                } else {
+                    $lineStr = (string) $line;
+                }
+                
+                if (preg_match('/UID["\'\s:=]+(\d+)/i', $lineStr, $m)) {
+                    // Si la cadena JSON/Texto tiene la palabra Seen, la ignoramos
+                    if (stripos($lineStr, 'Seen') === false) {
+                        $uid = (int) $m[1];
+                        if ($uid > 0) {
+                            $uids[] = $uid;
+                        }
+                    }
                 }
             }
 

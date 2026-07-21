@@ -96,18 +96,13 @@ class ImapConnector
         try {
             $folder = $this->client->getFolder('INBOX');
             
-            // TRUE GOD MODE: Para evitar que Google congele las cuentas grandes (Tarpit)
-            // Calculamos el UID más alto (uidnext) y le restamos 50.
-            // Esto obliga a IMAP a devolver solo los últimos 50 correos matemáticamente en 0.001s, 
-            // sin tener que buscar por fecha ni ordenar 20,000 correos.
-            
-            $examine = $folder->examine();
-            $uidNext = isset($examine['uidnext']) ? (int) $examine['uidnext'] : 1000;
-            $uidStart = max(1, $uidNext - 50);
-
-            // Buscamos el rango exacto de UIDs (ej. 4950:5000)
+            // TRUE GOD MODE (Versión 2): 
+            // Gmail rechaza las consultas crudas por rango de UIDs si las comillas no coinciden.
+            // La forma universal y rápida es pedir los correos del último día (since),
+            // PERO SIN decirle al servidor que los ordene (lo cual causaba el Tarpit).
+            // IMAP devolverá los UIDs de hoy instantáneamente, y PHP los ordenará en RAM.
             $messages = $folder->query()
-                ->whereUid($uidStart . ':' . $uidNext)
+                ->since(now()->subDays(1))
                 ->setFetchBody(false)
                 ->get();
 

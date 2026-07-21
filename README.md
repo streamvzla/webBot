@@ -339,6 +339,16 @@ pkill -f "imap:sentinel"; sleep 1; nohup docker exec -u sail mi-panel-laravel.te
 | `./vendor/bin/sail stop` | Apagar completamente todo el servidor |
 | `./vendor/bin/sail ps` | Ver el estado de todos los contenedores activos |
 
+### 🩺 Diagnóstico de Versiones (Troubleshooting)
+
+Si necesitas verificar qué versiones exactas están corriendo dentro del contenedor (útil para depurar errores de dependencias como Webklex):
+
+| Comando | Descripción |
+|---------|-------------|
+| `docker exec -u sail mi-panel-laravel.test-1 composer show webklex/php-imap` | Ver versión instalada de Webklex (librería IMAP) |
+| `docker exec -u sail mi-panel-laravel.test-1 php artisan --version` | Ver versión exacta de Laravel instalada |
+| `docker exec -u sail mi-panel-laravel.test-1 php -v` | Ver versión de PHP en el contenedor |
+
 > 💡 **Pro Tip:** Guarda esta guía en tus marcadores del navegador o en el escritorio del servidor. No necesitas internet para consultarla.
 
 ---

@@ -151,14 +151,17 @@ class ImapConnector
 
             // Evitar que array() de Webklex se cuelgue procesando respuestas gigantescas
             foreach ($rawLines as $line) {
-                if (is_array($line)) {
-                    // Si Webklex ya lo separó en sub-arrays, lo convertimos a string
-                    $line = implode(" ", $line);
+                // Si la línea es un arreglo (quizás anidado profundo por Webklex)
+                // lo convertimos a JSON seguro para no sufrir "Array to string conversion"
+                if (is_array($line) || is_object($line)) {
+                    $lineStr = json_encode($line);
+                } else {
+                    $lineStr = (string) $line;
                 }
                 
-                if (is_string($line) && preg_match('/UID\s+(\d+)/i', $line, $m)) {
-                    // Si la línea tiene \Seen, la ignoramos (ultra rápido)
-                    if (stripos($line, 'Seen') === false) {
+                if (preg_match('/UID["\'\s:=]+(\d+)/i', $lineStr, $m)) {
+                    // Si la cadena JSON/Texto tiene la palabra Seen, la ignoramos
+                    if (stripos($lineStr, 'Seen') === false) {
                         $uid = (int) $m[1];
                         if ($uid > 0) {
                             $uids[] = $uid;

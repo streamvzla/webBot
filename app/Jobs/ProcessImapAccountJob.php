@@ -36,6 +36,9 @@ class ProcessImapAccountJob implements ShouldQueue
      */
     public function handle(): void
     {
+        // [LIMITADOR EXTREMO] Evitar que un worker se quede colgado eternamente si Gmail bloquea el socket TCP
+        ini_set('default_socket_timeout', 15);
+
         $echoPrefix = "[" . $this->account->email . "]";
         echo "{$echoPrefix} Iniciando revisión de cuenta...\n";
 

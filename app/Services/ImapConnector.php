@@ -118,43 +118,19 @@ class ImapConnector
                 }
             } else {
                 // ESTRATEGIA MODO DIOS V12 (Solo para Goku)
-                $examine = $folder->examine();
-                $total = isset($examine['exists']) ? (int) $examine['exists'] : 0;
+                // Por petición del usuario: En lugar de secuencias (que colgó) o escanear 30,000 mensajes,
+                // le pedimos a Gmail que filtre estricta y ÚNICAMENTE los correos desde ayer/hoy.
+                // Gmail indexa las fechas instantáneamente, evitando el Tarpit.
+                $messages = $folder->query()
+                                   ->since(now()->subDays(1)) // Desde ayer (por seguridad de zona horaria)
+                                   ->unseen()                 // Solo no leídos
+                                   ->setFetchBody(false)      // No descargar el cuerpo del correo
+                                   ->limit(10, 1)             // Traer máximo 10
+                                   ->get();
                 
-                if ($total === 0) return [];
-                
-                $from = max(1, $total - 19);
-                $protocol = $this->client->getConnection();
-                
-                if (!$protocol || !method_exists($protocol, 'fetch')) {
-                    $messages = $folder->query()->unseen()->setFetchBody(false)->limit(20, 1)->get();
-                    $uids = [];
-                    foreach ($messages as $msg) { $uids[] = (int) $msg->getUid(); }
-                } else {
-                    $rawFetch = $protocol->fetch(['UID', 'FLAGS'], $from, $total, 0);
-                    $uids = [];
-                    $rawLines = [];
-                    try {
-                        $responses = is_array($rawFetch) ? $rawFetch : [$rawFetch];
-                        foreach ($responses as $respObj) {
-                            if (!is_object($respObj)) continue;
-                            $ref = new \ReflectionClass($respObj);
-                            foreach ($ref->getProperties() as $prop) {
-                                $prop->setAccessible(true);
-                                $val = $prop->getValue($respObj);
-                                if (is_array($val)) $rawLines = array_merge($rawLines, $val);
-                            }
-                        }
-                    } catch (\Throwable $e) {}
-
-                    foreach ($rawLines as $line) {
-                        $lineStr = (is_array($line) || is_object($line)) ? json_encode($line) : (string) $line;
-                        if (preg_match('/UID["\'\s:=,]+(\d+)/i', $lineStr, $m)) {
-                            if (stripos($lineStr, 'Seen') === false) {
-                                $uids[] = (int) $m[1];
-                            }
-                        }
-                    }
+                $uids = [];
+                foreach ($messages as $msg) {
+                    $uids[] = (int) $msg->getUid();
                 }
             }
 

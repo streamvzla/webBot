@@ -96,22 +96,25 @@ class ImapConnector
         try {
             $folder = $this->client->getFolder('INBOX');
             
-            // Usar since() para limitar el conjunto de datos antes de ordenar.
-            // Extraemos solo el último día (1) para que sea instantáneo incluso en correos gigantes.
+            // TRUE GOD MODE: Para evitar que Google congele las cuentas grandes (Tarpit)
+            // Calculamos el UID más alto (uidnext) y le restamos 50.
+            // Esto obliga a IMAP a devolver solo los últimos 50 correos matemáticamente en 0.001s, 
+            // sin tener que buscar por fecha ni ordenar 20,000 correos.
+            
+            $examine = $folder->examine();
+            $uidNext = isset($examine['uidnext']) ? (int) $examine['uidnext'] : 1000;
+            $uidStart = max(1, $uidNext - 50);
+
+            // Buscamos el rango exacto de UIDs (ej. 4950:5000)
             $messages = $folder->query()
-                ->since(now()->subDays(1))
-                ->setFetchOrderDesc() // Más recientes primero
-                ->limit(20)           // Máximo 20 para evitar colapsar la memoria y el tiempo
+                ->whereUid($uidStart . ':' . $uidNext)
                 ->setFetchBody(false)
                 ->get();
 
-            $messagesArray = $messages->all();
+            // Revertimos el array para tener los más nuevos de primero
+            $messagesArray = $messages->reverse()->take(20)->all();
 
-            // Tomar los últimos 20 (los más nuevos) y revertirlos
-            if (count($messagesArray) > 20) {
-                $messagesArray = array_slice($messagesArray, -20);
-            }
-            return array_reverse($messagesArray);
+            return $messagesArray;
         } catch (\Exception $e) {
             echo "  [ERROR IMAP] " . $e->getMessage() . "\n";
             Log::error('Error obteniendo emails recientes con Webklex', ['error' => $e->getMessage()]);

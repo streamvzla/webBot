@@ -8,12 +8,13 @@ use App\Models\Platform;
 use App\Models\AllowedEmail;
 use App\Services\ImapConnector;
 use App\Services\EmailCodeExtractor;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 
 class ProcessImapAccountJob implements ShouldQueue
@@ -125,6 +126,8 @@ class ProcessImapAccountJob implements ShouldQueue
             ]);
         } finally {
             try { $connector?->disconnect(); } catch (\Throwable $ex) {}
+            // Liberar el Semáforo para que el Director pueda enviar una nueva revisión
+            Cache::forget('imap_account_' . $this->account->id);
         }
     }
 

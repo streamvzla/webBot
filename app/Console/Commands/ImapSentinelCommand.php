@@ -8,6 +8,7 @@ use App\Models\Platform;
 use App\Models\ExtractedCode;
 use App\Jobs\ProcessImapAccountJob;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 
 class ImapSentinelCommand extends Command
 {
@@ -63,9 +64,14 @@ class ImapSentinelCommand extends Command
         $this->info("Despachando clones (Workers) para " . count($accounts) . " cuenta(s)...");
 
         foreach ($accounts as $account) {
-            // Despachar el Job para que los Workers paralelos lo procesen.
-            // Si ya hay un Job corriendo para esta cuenta, el middleware WithoutOverlapping lo omitirá.
-            ProcessImapAccountJob::dispatch($account);
+            $lockKey = 'imap_account_' . $account->id;
+            
+            // SEMAFORO: Intentamos poner la cuenta en rojo por 2 minutos.
+            // Si devuelve TRUE, significa que estaba en verde y despachamos al Clon.
+            // Si devuelve FALSE, el Clon todavía está revisando esa cuenta, así que la saltamos.
+            if (Cache::add($lockKey, true, now()->addMinutes(2))) {
+                ProcessImapAccountJob::dispatch($account);
+            }
         }
         
         $this->line("Clones despachados exitosamente.");

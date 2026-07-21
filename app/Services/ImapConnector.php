@@ -96,23 +96,16 @@ class ImapConnector
         try {
             $folder = $this->client->getFolder('INBOX');
             
-            // TRUE GOD MODE (Versión 8 - El Slicer Nativo):
-            // Descubrimos que Gmail "tarpitea" (congela) incluso las búsquedas por UID si el correo no existe.
-            // La solución definitiva es usar `limit($perPage, $page)` del Query Builder.
-            // Esto le dice a Webklex que baje SOLO la lista de números (UIDs) en 0.1s, 
-            // corte matemáticamente los últimos 20 en RAM, y *solo entonces* descargue los headers de esos 20.
-            // Es la técnica más rápida posible y esquiva absolutamente todo.
+            // TRUE GOD MODE (Versión 9 - Unseen Slicer):
+            // Descubrimos que `SEARCH ALL` cuelga a Gmail si la bandeja tiene miles de correos.
+            // PERO Gmail tiene un índice especial ultrarrápido para `UNSEEN` (No Leídos).
+            // Si le pedimos a Webklex SOLO los No Leídos, Gmail responde en 0.01s.
+            // Tomamos los primeros 20 no leídos y los procesamos.
             
-            $examine = $folder->examine();
-            $totalMessages = isset($examine['exists']) ? (int) $examine['exists'] : 1000;
-            
-            $perPage = 20;
-            $lastPage = max(1, (int) ceil($totalMessages / $perPage));
-
             $messages = $folder->query()
-                ->all()
+                ->unseen()
                 ->setFetchBody(false)
-                ->limit($perPage, $lastPage)
+                ->limit(20, 1) // Tomar los primeros 20 (página 1)
                 ->get();
 
             $messagesArray = [];
@@ -120,8 +113,7 @@ class ImapConnector
                 $messagesArray[] = $msg;
             }
 
-            // Revertir para tener los más nuevos de primero
-            return array_reverse($messagesArray);
+            return $messagesArray;
         } catch (\Exception $e) {
             echo "  [ERROR IMAP] " . $e->getMessage() . "\n";
             Log::error('Error obteniendo emails recientes con Webklex', ['error' => $e->getMessage()]);

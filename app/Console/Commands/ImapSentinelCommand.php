@@ -121,7 +121,7 @@ class ImapSentinelCommand extends Command
 
             $this->line("  -> Correos sin leer: " . count($messages));
 
-            $messagesToProcess = array_slice($messages, 0, 50);
+            $messagesToProcess = array_slice($messages, 0, 20);
 
             $this->line("  -> Procesando los " . count($messagesToProcess) . " más recientes...");
 

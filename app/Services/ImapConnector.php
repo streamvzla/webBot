@@ -97,19 +97,19 @@ class ImapConnector
             $folder = $this->client->getFolder('INBOX');
             
             // Usar all() en lugar de since() para evitar que Google haga búsquedas exhaustivas por fecha
-            // El limit(50) combinado con setFetchOrderDesc() asegurará que traiga los 50 más nuevos instantáneamente.
+            // El limit(20) combinado con setFetchOrderDesc() asegurará que traiga los 20 más nuevos instantáneamente.
             $messages = $folder->query()
                 ->all()
                 ->setFetchOrderDesc() // Más recientes primero
-                ->limit(50)           // Máximo 50 para evitar colapsar la memoria y el tiempo
+                ->limit(20)           // Máximo 20 para evitar colapsar la memoria y el tiempo
                 ->setFetchBody(false)
                 ->get();
 
             $messagesArray = $messages->all();
 
-            // Tomar los últimos 50 (los más nuevos) y revertirlos
-            if (count($messagesArray) > 50) {
-                $messagesArray = array_slice($messagesArray, -50);
+            // Tomar los últimos 20 (los más nuevos) y revertirlos
+            if (count($messagesArray) > 20) {
+                $messagesArray = array_slice($messagesArray, -20);
             }
             return array_reverse($messagesArray);
         } catch (\Exception $e) {

@@ -136,25 +136,55 @@ class ResellerQueryController extends Controller
                 ], 400);
             }
 
-            // Mismo motor Centinela que usa el cliente
-            $maxRetries = 6;
+            // ─────────────────────────────────────────────────────────────────
+            // NUEVA ARQUITECTURA: EXTRACCIÓN BAJO DEMANDA (EN VIVO)
+            // ─────────────────────────────────────────────────────────────────
             $extractedCode = null;
-
-            for ($i = 0; $i < $maxRetries; $i++) {
-                $extractedCode = \App\Models\ExtractedCode::where('email_account_id', $emailAccount->id)
-                    ->where('platform_id', $platform->id)
-                    ->where('recipient_email', strtolower(trim($email)))
-                    ->where('expires_at', '>', now())
-                    ->latest()
-                    ->first();
-
-                if ($extractedCode) {
-                    break;
+            $cacheKey = 'live_imap_query_' . md5($email . '_' . $emailAccount->id);
+            
+            if (\Illuminate\Support\Facades\Cache::has($cacheKey)) {
+                $cachedResult = \Illuminate\Support\Facades\Cache::get($cacheKey);
+                if ($cachedResult !== 'not_found') {
+                    $extractedCode = (object) $cachedResult; // Mocked for the rest of the controller
                 }
-                
-                // Si no hay código, pausar un poco y reintentar (simular polling)
-                if ($i < $maxRetries - 1) {
-                    sleep(2);
+            } else {
+                try {
+                    $connector = new \App\Services\ImapConnector($emailAccount);
+                    $connector->connect();
+
+                    $messages = $connector->getRecentEmails(1);
+                    $expectedRecipients = [strtolower(trim($email))];
+                    $platformSubjects = [$platform->name => $platform->subject_keywords];
+
+                    foreach ($messages as $message) {
+                        $emailData = $connector->searchByTo($message, $expectedRecipients, $platformSubjects);
+                        
+                        if ($emailData) {
+                            $cleanText = strip_tags($emailData['body']);
+                            $extracted = \App\Services\EmailCodeExtractor::extract($emailData['body'], $cleanText);
+                            $val = is_array($extracted) ? ($extracted['value'] ?? null) : $extracted;
+                            
+                            if ($val) {
+                                $extractedCode = (object) [
+                                    'body' => $emailData['body'],
+                                    'code' => $val,
+                                    'type' => is_array($extracted) ? ($extracted['type'] ?? 'code') : 'code',
+                                    'code_type' => is_array($extracted) ? ($extracted['type'] ?? 'code') : 'code',
+                                    'created_at' => now(), // Mocked Carbon instance
+                                ];
+                                break;
+                            }
+                        }
+                    }
+                    
+                    \Illuminate\Support\Facades\Cache::put($cacheKey, $extractedCode ? (array) $extractedCode : 'not_found', 10);
+                    
+                    try {
+                        $connector->disconnect();
+                    } catch (\Throwable $e) {}
+                    
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::error("Error en ResellerQueryController (On-Demand): " . $e->getMessage());
                 }
             }
 
@@ -175,7 +205,9 @@ class ResellerQueryController extends Controller
             if ($extractedCode) {
                 // Guardar en sesión de forma aislada
                 Session::put('reseller_email_body', $extractedCode->body);
-                Session::put('reseller_email_received_at', $extractedCode->created_at->format('Y-m-d H:i:s'));
+                $createdAt = is_string($extractedCode->created_at) ? \Carbon\Carbon::parse($extractedCode->created_at) : clone $extractedCode->created_at;
+                
+                Session::put('reseller_email_received_at', $createdAt->format('Y-m-d H:i:s'));
                 Session::put('reseller_temp_code_expiry', now()->addMinutes(15)->timestamp);
                 Session::put('reseller_email_is_html', true);
                 
@@ -188,9 +220,9 @@ class ResellerQueryController extends Controller
                     'success'     => true,
                     'code'        => $extractedCode->code,
                     'code_type'   => $extractedCode->code_type ?? 'code',
-                    'message'     => 'Código extraído correctamente del Centinela.',
+                    'message'     => 'Código extraído correctamente del servidor.',
                     'url'         => route('admin.query.code'),
-                    'received_at' => $extractedCode->created_at->format('Y-m-d H:i:s')
+                    'received_at' => $createdAt->format('Y-m-d H:i:s')
                 ]);
             }
 

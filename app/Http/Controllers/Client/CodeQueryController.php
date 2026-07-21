@@ -244,30 +244,55 @@ class CodeQueryController extends Controller
             ]);
 
             // ─────────────────────────────────────────────────────────────────
-            // ARQUITECTURA ASÍNCRONA (Centinela)
-            // El Robot Centinela corre en background y ya habrá extraído el
-            // código a la tabla extracted_codes. Aquí solo leemos esa tabla
-            // ultrarrápido (sin abrir IMAP en tiempo real → cero 504).
-            // Se reintenta hasta 6 veces con pausa de 2s para darle margen al
-            // Centinela de atrapar correos muy recientes.
+            // NUEVA ARQUITECTURA: EXTRACCIÓN BAJO DEMANDA (EN VIVO)
+            // Ya no usamos el Centinela ni workers en background. 
+            // Nos conectamos a IMAP solo cuando el cliente hace esta solicitud.
             // ─────────────────────────────────────────────────────────────────
-            $maxRetries = 6;
             $extractedCode = null;
-
-            for ($i = 0; $i < $maxRetries; $i++) {
-                $extractedCode = \App\Models\ExtractedCode::where('email_account_id', $emailAccount->id)
-                    ->where('platform_id', $platform->id)
-                    ->where('recipient_email', strtolower(trim($email)))
-                    ->where('expires_at', '>', now())
-                    ->latest()
-                    ->first();
-
-                if ($extractedCode) {
-                    break;
+            $cacheKey = 'live_imap_query_' . md5($email . '_' . $emailAccount->id);
+            
+            if (\Illuminate\Support\Facades\Cache::has($cacheKey)) {
+                $cachedResult = \Illuminate\Support\Facades\Cache::get($cacheKey);
+                if ($cachedResult !== 'not_found') {
+                    $extractedCode = (object) $cachedResult; // Mocked for the rest of the controller
                 }
+            } else {
+                try {
+                    $connector = new \App\Services\ImapConnector($emailAccount);
+                    $connector->connect();
 
-                if ($i < $maxRetries - 1) {
-                    sleep(2);
+                    $messages = $connector->getRecentEmails(1);
+                    $expectedRecipients = [strtolower(trim($email))];
+                    $platformSubjects = [$platform->name => $platform->subject_keywords];
+
+                    foreach ($messages as $message) {
+                        $emailData = $connector->searchByTo($message, $expectedRecipients, $platformSubjects);
+                        
+                        if ($emailData) {
+                            $cleanText = strip_tags($emailData['body']);
+                            $extracted = \App\Services\EmailCodeExtractor::extract($emailData['body'], $cleanText);
+                            $val = is_array($extracted) ? ($extracted['value'] ?? null) : $extracted;
+                            
+                            if ($val) {
+                                $extractedCode = (object) [
+                                    'body' => $emailData['body'],
+                                    'code' => $val,
+                                    'type' => is_array($extracted) ? ($extracted['type'] ?? 'code') : 'code',
+                                    'created_at' => now(), // Mocked Carbon instance
+                                ];
+                                break;
+                            }
+                        }
+                    }
+                    
+                    \Illuminate\Support\Facades\Cache::put($cacheKey, $extractedCode ? (array) $extractedCode : 'not_found', 10);
+                    
+                    try {
+                        $connector->disconnect();
+                    } catch (\Throwable $e) {}
+                    
+                } catch (\Throwable $e) {
+                    Log::error("Error en CodeQueryController (On-Demand): " . $e->getMessage());
                 }
             }
 
@@ -294,7 +319,9 @@ class CodeQueryController extends Controller
                 $displaySeconds = config('app.code_display_seconds', 60);
 
                 Session::put('email_body',        $extractedCode->body);
-                Session::put('email_received_at', $extractedCode->created_at->format('Y-m-d H:i:s'));
+                $createdAt = is_string($extractedCode->created_at) ? \Carbon\Carbon::parse($extractedCode->created_at) : clone $extractedCode->created_at;
+                
+                Session::put('email_received_at', $createdAt->format('Y-m-d H:i:s'));
                 Session::put('temp_code_expiry',  now()->addSeconds($displaySeconds)->timestamp);
                 Session::put('email_is_html',     true);
                 Session::put('extracted_code', [

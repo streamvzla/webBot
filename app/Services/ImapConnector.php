@@ -123,49 +123,48 @@ class ImapConnector
             }
 
             // FETCH directo por rango de secuencia — Cero SEARCH, Cero Tarpit
+            // Retorna un objeto Webklex\PHPIMAP\Connection\Protocols\Response
             $rawFetch = $protocol->fetch(['UID', 'FLAGS'], $from, $total, 0);
 
-            // === DEBUG TEMPORAL ===
-            $rawFetchClass = is_object($rawFetch) ? get_class($rawFetch) : 'N/A';
-            echo "  [DEBUG] tipo: " . gettype($rawFetch) . " | clase: " . $rawFetchClass . "\n";
-            // Intentar convertir objeto a array
-            if (is_object($rawFetch)) {
-                if (method_exists($rawFetch, 'toArray')) {
-                    $rawFetch = $rawFetch->toArray();
-                    echo "  [DEBUG] toArray() count: " . count($rawFetch) . "\n";
-                } elseif (method_exists($rawFetch, 'all')) {
-                    $rawFetch = $rawFetch->all();
-                    echo "  [DEBUG] all() count: " . count($rawFetch) . "\n";
-                } else {
-                    $rawFetch = (array) $rawFetch;
-                    echo "  [DEBUG] cast array count: " . count($rawFetch) . "\n";
-                }
-            }
-            if (is_array($rawFetch) && !empty($rawFetch)) {
-                $firstKey = array_key_first($rawFetch);
-                echo "  [DEBUG] 1ra clave: " . $firstKey . " | datos: " . substr(json_encode($rawFetch[$firstKey]), 0, 300) . "\n";
-            } else {
-                echo "  [DEBUG] VACIO o no-array despues de conversion\n";
-            }
-            // === FIN DEBUG ===
+            // Usar el método array() del objeto Response para obtener los datos procesados
+            $fetchData = $rawFetch->array();
 
-            if (empty($rawFetch)) {
+            if (empty($fetchData)) {
                 return [];
             }
 
-            // Extraer UIDs de la respuesta cruda del protocolo
+            // Extraer UIDs de la respuesta procesada
+            // El formato es: [seqno => ['uid' => X, 'flags' => [...]]] o similar
             $uids = [];
-            foreach ($rawFetch as $seqno => $data) {
+            foreach ($fetchData as $seqno => $data) {
                 $uid = null;
-                // Webklex puede devolver uid en distintos formatos según versión
-                if (isset($data['uid'])) {
-                    $uid = is_array($data['uid']) ? (int) array_values($data['uid'])[0] : (int) $data['uid'];
-                } elseif (isset($data['UID'])) {
-                    $uid = is_array($data['UID']) ? (int) array_values($data['UID'])[0] : (int) $data['UID'];
+                if (is_array($data)) {
+                    $uid = $data['uid'] ?? $data['UID'] ?? null;
+                    if (is_array($uid)) {
+                        $uid = (int) array_values($uid)[0];
+                    } else {
+                        $uid = (int) $uid;
+                    }
+                } elseif (is_numeric($data)) {
+                    $uid = (int) $data;
                 }
                 if ($uid && $uid > 0) {
                     $uids[] = $uid;
                 }
+            }
+
+            // Si no se extrajeron UIDs de ese formato, intentar con getResponse() (líneas crudas)
+            if (empty($uids)) {
+                $rawLines = $rawFetch->getResponse();
+                foreach ($rawLines as $line) {
+                    if (is_string($line) && preg_match('/UID\s+(\d+)/i', $line, $m)) {
+                        $uids[] = (int) $m[1];
+                    }
+                }
+            }
+
+            if (empty($uids)) {
+                return [];
             }
 
             // Más nuevos primero

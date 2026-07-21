@@ -123,16 +123,29 @@ class ImapConnector
             }
 
             // FETCH directo por rango de secuencia — Cero SEARCH, Cero Tarpit
-            // Envía: FETCH from:total (UID FLAGS) al servidor IMAP
             $rawFetch = $protocol->fetch(['UID', 'FLAGS'], $from, $total, 0);
 
-            // === DEBUG TEMPORAL — remover después de verificar ===
-            echo "  [DEBUG] rawFetch tipo: " . gettype($rawFetch) . " | count: " . (is_array($rawFetch) ? count($rawFetch) : 'N/A') . "\n";
-            if (!empty($rawFetch)) {
+            // === DEBUG TEMPORAL ===
+            $rawFetchClass = is_object($rawFetch) ? get_class($rawFetch) : 'N/A';
+            echo "  [DEBUG] tipo: " . gettype($rawFetch) . " | clase: " . $rawFetchClass . "\n";
+            // Intentar convertir objeto a array
+            if (is_object($rawFetch)) {
+                if (method_exists($rawFetch, 'toArray')) {
+                    $rawFetch = $rawFetch->toArray();
+                    echo "  [DEBUG] toArray() count: " . count($rawFetch) . "\n";
+                } elseif (method_exists($rawFetch, 'all')) {
+                    $rawFetch = $rawFetch->all();
+                    echo "  [DEBUG] all() count: " . count($rawFetch) . "\n";
+                } else {
+                    $rawFetch = (array) $rawFetch;
+                    echo "  [DEBUG] cast array count: " . count($rawFetch) . "\n";
+                }
+            }
+            if (is_array($rawFetch) && !empty($rawFetch)) {
                 $firstKey = array_key_first($rawFetch);
-                echo "  [DEBUG] Primera clave: " . $firstKey . " | Datos: " . json_encode($rawFetch[$firstKey]) . "\n";
+                echo "  [DEBUG] 1ra clave: " . $firstKey . " | datos: " . substr(json_encode($rawFetch[$firstKey]), 0, 300) . "\n";
             } else {
-                echo "  [DEBUG] rawFetch VACIO!\n";
+                echo "  [DEBUG] VACIO o no-array despues de conversion\n";
             }
             // === FIN DEBUG ===
 

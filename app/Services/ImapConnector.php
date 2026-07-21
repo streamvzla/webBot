@@ -131,15 +131,23 @@ class ImapConnector
             
             // Usar Reflexión para extraer la propiedad interna (response) sin importar si es protected/private
             try {
-                $ref = new \ReflectionClass($rawFetch);
-                foreach ($ref->getProperties() as $prop) {
-                    $prop->setAccessible(true);
-                    $val = $prop->getValue($rawFetch);
-                    if (is_array($val)) {
-                        $rawLines = array_merge($rawLines, $val);
+                // Si Webklex devolvió un arreglo de respuestas (múltiples secuencias)
+                $responses = is_array($rawFetch) ? $rawFetch : [$rawFetch];
+                
+                foreach ($responses as $respObj) {
+                    if (!is_object($respObj)) continue;
+                    $ref = new \ReflectionClass($respObj);
+                    foreach ($ref->getProperties() as $prop) {
+                        $prop->setAccessible(true);
+                        $val = $prop->getValue($respObj);
+                        if (is_array($val)) {
+                            $rawLines = array_merge($rawLines, $val);
+                        }
                     }
                 }
-            } catch (\Exception $e) {}
+            } catch (\Throwable $e) {
+                // Silenciar errores de reflexión para evitar cuelgues FATALES
+            }
 
             // Evitar que array() de Webklex se cuelgue procesando respuestas gigantescas
             foreach ($rawLines as $line) {

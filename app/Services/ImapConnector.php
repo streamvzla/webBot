@@ -126,6 +126,16 @@ class ImapConnector
             // Envía: FETCH from:total (UID FLAGS) al servidor IMAP
             $rawFetch = $protocol->fetch(['UID', 'FLAGS'], $from, $total, 0);
 
+            // === DEBUG TEMPORAL — remover después de verificar ===
+            echo "  [DEBUG] rawFetch tipo: " . gettype($rawFetch) . " | count: " . (is_array($rawFetch) ? count($rawFetch) : 'N/A') . "\n";
+            if (!empty($rawFetch)) {
+                $firstKey = array_key_first($rawFetch);
+                echo "  [DEBUG] Primera clave: " . $firstKey . " | Datos: " . json_encode($rawFetch[$firstKey]) . "\n";
+            } else {
+                echo "  [DEBUG] rawFetch VACIO!\n";
+            }
+            // === FIN DEBUG ===
+
             if (empty($rawFetch)) {
                 return [];
             }

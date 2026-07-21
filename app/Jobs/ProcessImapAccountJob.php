@@ -32,7 +32,8 @@ class ProcessImapAccountJob implements ShouldQueue
     {
         // Evita que dos clones intenten leer la misma cuenta al mismo tiempo.
         // Si el clon 1 todavía está leyendo, el clon 2 aborta la misión (dontRelease).
-        return [(new WithoutOverlapping($this->account->id))->dontRelease()];
+        // El lock expira automáticamente a los 60 segundos por si el clon muere (pkill).
+        return [(new WithoutOverlapping($this->account->id))->dontRelease()->expireAfter(60)];
     }
 
     /**

@@ -96,13 +96,17 @@ class ImapConnector
         try {
             $folder = $this->client->getFolder('INBOX');
             
-            // TRUE GOD MODE (Versión 2): 
-            // Gmail rechaza las consultas crudas por rango de UIDs si las comillas no coinciden.
-            // La forma universal y rápida es pedir los correos del último día (since),
-            // PERO SIN decirle al servidor que los ordene (lo cual causaba el Tarpit).
-            // IMAP devolverá los UIDs de hoy instantáneamente, y PHP los ordenará en RAM.
+            // TRUE GOD MODE (Versión 3 - La Bala de Plata):
+            // Gmail se cuelga con `since()` (efecto Tarpit de 2+ minutos).
+            // Y Webklex arroja `BAD` si usamos `whereUid()` porque le pone comillas dobles al rango.
+            // Solución final: Usar `raw()` para inyectar el comando IMAP puro sin que Webklex lo altere.
+            
+            $examine = $folder->examine();
+            $uidNext = isset($examine['uidnext']) ? (int) $examine['uidnext'] : 1000;
+            $uidStart = max(1, $uidNext - 50);
+
             $messages = $folder->query()
-                ->since(now()->subDays(1))
+                ->raw("UID $uidStart:*")
                 ->setFetchBody(false)
                 ->get();
 

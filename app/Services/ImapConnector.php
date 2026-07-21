@@ -120,14 +120,16 @@ class ImapConnector
                     return [];
                 }
 
-                // OPTIMIZACIÓN EXTREMA: Solo pedir los últimos 5 correos, no 20.
-                // Esto reduce el tiempo de parseo interno de Webklex a 2-5 segundos.
-                $from = max(1, $total - 4);
+                // AMPLIACIÓN DE RED (25 CORREOS):
+                // Aumentado a 25 para dar margen de tiempo (ej. 5-10 minutos) si el admin 
+                // tarda en entrar al panel y llegan muchos correos masivos de golpe.
+                // Tomará entre 15-20 segundos de carga en el panel.
+                $from = max(1, $total - 24);
                 
                 $protocol = $this->client->getConnection();
 
                 if (!$protocol || !method_exists($protocol, 'fetch')) {
-                    $messages = $folder->query()->unseen()->setFetchBody(false)->limit(5, 1)->get();
+                    $messages = $folder->query()->unseen()->setFetchBody(false)->limit(25, 1)->get();
                     $uids = [];
                     foreach ($messages as $msg) { $uids[] = (int) $msg->getUid(); }
                 } else {

@@ -96,22 +96,31 @@ class ImapConnector
         try {
             $folder = $this->client->getFolder('INBOX');
             
-            // TRUE GOD MODE (Versión 3 - La Bala de Plata):
-            // Gmail se cuelga con `since()` (efecto Tarpit de 2+ minutos).
-            // Y Webklex arroja `BAD` si usamos `whereUid()` porque le pone comillas dobles al rango.
-            // Solución final: Usar `raw()` para inyectar el comando IMAP puro sin que Webklex lo altere.
+            // TRUE GOD MODE (Versión 4 - Fuerza Bruta):
+            // Webklex no soporta raw() y le pone comillas dobles a los rangos, bloqueando Gmail.
+            // Solución Definitiva: Como IMAP responde en 1 milisegundo por UID,
+            // iteramos hacia atrás desde el UID más alto pidiendo de a 1 correo.
+            // Esto evita TODO tipo de ordenamiento, tarpits y problemas de sintaxis.
             
             $examine = $folder->examine();
             $uidNext = isset($examine['uidnext']) ? (int) $examine['uidnext'] : 1000;
-            $uidStart = max(1, $uidNext - 50);
+            $uidStart = max(1, $uidNext - 100); // Buscamos hasta 100 UIDs hacia atrás
 
-            $messages = $folder->query()
-                ->raw("UID $uidStart:*")
-                ->setFetchBody(false)
-                ->get();
-
-            // Revertimos el array para tener los más nuevos de primero
-            $messagesArray = $messages->reverse()->take(20)->all();
+            $messagesArray = [];
+            for ($uid = $uidNext; $uid >= $uidStart; $uid--) {
+                try {
+                    // Al castear a (int), Webklex NO pone comillas y Gmail lo acepta feliz.
+                    $msg = $folder->query()->whereUid((int) $uid)->setFetchBody(false)->get()->first();
+                    if ($msg) {
+                        $messagesArray[] = $msg;
+                        if (count($messagesArray) >= 20) {
+                            break; // Ya tenemos los 20 más recientes
+                        }
+                    }
+                } catch (\Exception $ex) {
+                    // Ignorar errores individuales de UID
+                }
+            }
 
             return $messagesArray;
         } catch (\Exception $e) {

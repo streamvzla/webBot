@@ -96,28 +96,29 @@ class ImapConnector
         try {
             $folder = $this->client->getFolder('INBOX');
             
-            // TRUE GOD MODE (Versión 6 - Fuerza Bruta Optimizada):
-            // La Paginación de Webklex descarga TODOS los headers antes de paginar (crashea PHP con 19,000 correos).
-            // Volvemos a la Fuerza Bruta, pero ahora usamos `getMessage()` directo en lugar del Query Builder.
-            // Esto reduce las peticiones a la mitad (1 solo roundtrip por correo) y esquiva el SEARCH.
+            // TRUE GOD MODE (Versión 7 - Fuerza Bruta Clásica Optimizada):
+            // Falló getMessage() porque tu versión de Webklex es tan antigua que no tiene esa función 
+            // (arrojó un Fatal Error oculto en 450ms).
+            // Regresamos a la Versión 4 (la que SÍ te funcionó para cuentas@) donde usamos el Query Builder.
+            // Solo que ahora buscamos un máximo de 40 UIDs para que Gmail termine en ~15 segundos exactos.
             
             $examine = $folder->examine();
             $uidNext = isset($examine['uidnext']) ? (int) $examine['uidnext'] : 1000;
-            $uidStart = max(1, $uidNext - 60); // Máximo buscamos 60 posiciones hacia atrás (toma 2 segundos)
+            $uidStart = max(1, $uidNext - 40); // 40 ciclos = 15 segundos maximo de espera
 
             $messagesArray = [];
             for ($uid = $uidNext; $uid >= $uidStart; $uid--) {
                 try {
-                    // getMessage(uid, sequence, fetchBody) -> false para no descargar el cuerpo pesado
-                    $msg = $folder->getMessage((int) $uid, null, false);
+                    // Castear a (int) evita el bug de comillas.
+                    $msg = $folder->query()->whereUid((int) $uid)->setFetchBody(false)->get()->first();
                     if ($msg) {
                         $messagesArray[] = $msg;
                         if (count($messagesArray) >= 20) {
                             break;
                         }
                     }
-                } catch (\Exception $ex) {
-                    // Ignorar UIDs que fueron borrados
+                } catch (\Throwable $ex) {
+                    // Ignorar
                 }
             }
 

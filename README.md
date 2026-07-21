@@ -386,3 +386,46 @@ Si necesitas verificar quÃ© versiones exactas estÃ¡n corriendo dentro del conten
 [![GitHub](https://img.shields.io/badge/GitHub-streamvzla-181717?style=for-the-badge&logo=github)](https://github.com/streamvzla/webBot)
 
 </div>
+
+
+---
+
+## ?? Historial Técnico: La Batalla Contra el Tarpit de Gmail
+
+Durante el desarrollo del Centinela IMAP, se realizaron 12 iteraciones para resolver el
+problema del Tarpit de Gmail en cuentas con bandejas masivas.
+
+### Hallazgos Clave
+
+| Versión | Método | Resultado |
+|---------|--------|-----------|
+| V1-V4 | SEARCH SINCE, SEARCH UID X | ? Gmail Tarpit (cuelgue en cuentas masivas) |
+| V5 | paginate() de Webklex | ? Out of Memory (carga 19,000 objetos a RAM) |
+| V6 | getMessage() | ? Fatal Error silencioso (API eliminada en Webklex 6.x) |
+| V7-V10 | Bucle de whereUid((int) \) | ? whereUid() usa SEARCH internamente ? tarpit |
+| V11 | imap_open() + imap_fetch_overview() | ? Webklex 6.x usa sockets propios, 2da conexión rechazada |
+| **V12** | **\->fetch() interno + getMessageByUid()** | **? Sin SEARCH, sin tarpit, cero segundos** |
+
+### Diagnóstico del Entorno (VPS)
+```
+Webklex/php-imap: v6.2.0
+PHP: 8.4+ (Laravel Sail / Docker)
+```
+
+Comandos de diagnóstico:
+```bash
+docker exec -u sail mi-panel-laravel.test-1 composer show webklex/php-imap
+docker exec -u sail mi-panel-laravel.test-1 php artisan --version
+docker exec -u sail mi-panel-laravel.test-1 php -v
+```
+
+### Solución de Cola SQLite Corrompida ("61 años FAIL")
+Si los workers muestran tiempos absurdos como "61 años" en los logs:
+```bash
+pkill -f "queue:work"
+pkill -f "imap:sentinel"
+docker exec -u root mi-panel-laravel.test-1 pkill -9 -f php || true
+docker exec -u root mi-panel-laravel.test-1 sqlite3 /var/www/html/database/database.sqlite "DELETE FROM jobs;"
+docker exec -u root mi-panel-laravel.test-1 rm -f /var/www/html/database/database.sqlite-wal /var/www/html/database/database.sqlite-shm
+docker exec -u sail mi-panel-laravel.test-1 php artisan cache:clear
+```

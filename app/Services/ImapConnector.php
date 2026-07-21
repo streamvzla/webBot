@@ -127,7 +127,7 @@ class ImapConnector
             $rawFetch = $protocol->fetch(['UID', 'FLAGS'], $from, $total, 0);
 
             $uids = [];
-            $rawLines = $rawFetch->getResponse();
+            $rawLines = $rawFetch->response ?? [];
 
             // Evitar que array() de Webklex se cuelgue procesando respuestas gigantescas
             foreach ($rawLines as $line) {

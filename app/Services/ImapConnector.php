@@ -95,15 +95,14 @@ class ImapConnector
 
         try {
             $folder = $this->client->getFolder('INBOX');
-            
-            // TRUE GOD MODE (Versión 11 - PHP Nativo FETCH por Secuencia):
-            // Descubrimos que whereUid() de Webklex usa internamente SEARCH UID X,
-            // que también tarpitea a Gmail en bandejas masivas.
-            // La solución DEFINITIVA es abrir una conexión nativa PHP IMAP en paralelo
-            // y usar imap_fetch_overview() con rangos de SECUENCIA (N:M).
-            // Gmail responde a FETCH secuencial en microsegundos sin importar el tamaño de la bandeja.
-            // Cero SEARCH. Cero Tarpit. Cero crashes de memoria.
-            
+
+            // TRUE GOD MODE (Versión 12 - Protocol Direct FETCH):
+            // Todos los comandos SEARCH de IMAP cuelgan a Gmail en bandejas masivas.
+            // La solución definitiva es usar el protocolo INTERNO de Webklex para enviar
+            // directamente: FETCH N:M (UID FLAGS) por número de secuencia.
+            // Sin SEARCH. Sin Tarpit. Sin segunda conexión. Sin imap_open().
+            // Luego usamos getMessageByUid() que ya sabemos que funciona y es rápido.
+
             $examine = $folder->examine();
             $total = isset($examine['exists']) ? (int) $examine['exists'] : 0;
 
@@ -111,62 +110,63 @@ class ImapConnector
                 return [];
             }
 
-            $from = max(1, $total - 19); // Últimos 20 mensajes por número de secuencia
+            $from = max(1, $total - 19); // Últimos 20 por número de secuencia
 
-            // Abrir conexión PHP nativa IMAP para usar imap_fetch_overview
-            $password = $this->emailAccount->imap_password;
-            try { $password = Crypt::decryptString($password); } catch (\Exception $e) {}
+            // Obtener el protocolo interno de Webklex
+            $protocol = $this->client->getConnection();
 
-            $host     = $this->emailAccount->imap_host;
-            $port     = $this->emailAccount->imap_port ?? 993;
-            $enc      = $this->emailAccount->imap_encryption ?? 'ssl';
-            $username = $this->emailAccount->username ?? $this->emailAccount->email;
-
-            $mailbox  = "{{{$host}:{$port}/imap/{$enc}/novalidate-cert}}INBOX";
-
-            // Silenciar errores de conexión
-            $imapStream = @imap_open($mailbox, $username, $password, 0, 1, ['DISABLE_AUTHENTICATOR' => 'GSSAPI']);
-
-            if (!$imapStream) {
-                // Fallback: Intentar sin novalidate-cert
-                $mailbox = "{{{$host}:{$port}/imap/{$enc}}}INBOX";
-                $imapStream = @imap_open($mailbox, $username, $password, 0, 1, ['DISABLE_AUTHENTICATOR' => 'GSSAPI']);
+            if (!$protocol || !method_exists($protocol, 'fetch')) {
+                // Fallback: si el protocolo no tiene fetch(), buscar solo no leídos
+                echo "  [INFO] Usando fallback UNSEEN\n";
+                $messages = $folder->query()->unseen()->setFetchBody(false)->limit(20, 1)->get();
+                return array_values($messages->toArray());
             }
 
-            if (!$imapStream) {
-                echo "  [ERROR IMAP] No se pudo abrir conexion nativa PHP IMAP\n";
+            // FETCH directo por rango de secuencia — Cero SEARCH, Cero Tarpit
+            // Envía: FETCH from:total (UID FLAGS) al servidor IMAP
+            $rawFetch = $protocol->fetch(['UID', 'FLAGS'], $from, $total, 0);
+
+            if (empty($rawFetch)) {
                 return [];
             }
 
-            // imap_fetch_overview usa secuencias. Cero SEARCH. Cero Tarpit.
-            $overviews = @imap_fetch_overview($imapStream, "{$from}:{$total}", 0);
-            @imap_close($imapStream);
-
-            if (empty($overviews)) {
-                return [];
+            // Extraer UIDs de la respuesta cruda del protocolo
+            $uids = [];
+            foreach ($rawFetch as $seqno => $data) {
+                $uid = null;
+                // Webklex puede devolver uid en distintos formatos según versión
+                if (isset($data['uid'])) {
+                    $uid = is_array($data['uid']) ? (int) array_values($data['uid'])[0] : (int) $data['uid'];
+                } elseif (isset($data['UID'])) {
+                    $uid = is_array($data['UID']) ? (int) array_values($data['UID'])[0] : (int) $data['UID'];
+                }
+                if ($uid && $uid > 0) {
+                    $uids[] = $uid;
+                }
             }
 
-            // Ordenar de más nuevo a más viejo (por número de secuencia desc)
-            usort($overviews, fn($a, $b) => $b->msgno - $a->msgno);
+            // Más nuevos primero
+            rsort($uids);
 
-            // Convertir los overviews crudos en objetos Webklex Message para compatibilidad con el Job
+            // Cargar objetos Webklex Message usando getMessageByUid()
+            // Este método usa UID FETCH directo, NO SEARCH. Ya probado y funciona rápido.
             $messagesArray = [];
-            foreach ($overviews as $overview) {
+            foreach ($uids as $uid) {
                 try {
-                    $uid = (int) $overview->uid;
-                    $msg = $folder->query()->whereUid($uid)->setFetchBody(false)->get()->first();
+                    $msg = $folder->query()->setFetchBody(false)->getMessageByUid($uid);
                     if ($msg) {
                         $messagesArray[] = $msg;
                     }
                 } catch (\Throwable $ex) {
-                    // Ignorar UIDs individuales que fallen
+                    // Ignorar fallos individuales
                 }
             }
 
             return $messagesArray;
+
         } catch (\Exception $e) {
             echo "  [ERROR IMAP] " . $e->getMessage() . "\n";
-            Log::error('Error obteniendo emails recientes con Webklex', ['error' => $e->getMessage()]);
+            Log::error('Error obteniendo emails recientes', ['error' => $e->getMessage()]);
             return [];
         }
     }

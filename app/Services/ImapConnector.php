@@ -97,9 +97,9 @@ class ImapConnector
             $folder = $this->client->getFolder('INBOX');
             
             // Usar since() para limitar el conjunto de datos antes de ordenar.
-            // Si usamos all(), Google intenta ordenar 20,000 correos, colgando la conexión.
+            // Extraemos solo el último día (1) para que sea instantáneo incluso en correos gigantes.
             $messages = $folder->query()
-                ->since(now()->subDays(3))
+                ->since(now()->subDays(1))
                 ->setFetchOrderDesc() // Más recientes primero
                 ->limit(20)           // Máximo 20 para evitar colapsar la memoria y el tiempo
                 ->setFetchBody(false)

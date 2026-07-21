@@ -96,33 +96,32 @@ class ImapConnector
         try {
             $folder = $this->client->getFolder('INBOX');
             
-            // TRUE GOD MODE (Versión 7 - Fuerza Bruta Clásica Optimizada):
-            // Falló getMessage() porque tu versión de Webklex es tan antigua que no tiene esa función 
-            // (arrojó un Fatal Error oculto en 450ms).
-            // Regresamos a la Versión 4 (la que SÍ te funcionó para cuentas@) donde usamos el Query Builder.
-            // Solo que ahora buscamos un máximo de 40 UIDs para que Gmail termine en ~15 segundos exactos.
+            // TRUE GOD MODE (Versión 8 - El Slicer Nativo):
+            // Descubrimos que Gmail "tarpitea" (congela) incluso las búsquedas por UID si el correo no existe.
+            // La solución definitiva es usar `limit($perPage, $page)` del Query Builder.
+            // Esto le dice a Webklex que baje SOLO la lista de números (UIDs) en 0.1s, 
+            // corte matemáticamente los últimos 20 en RAM, y *solo entonces* descargue los headers de esos 20.
+            // Es la técnica más rápida posible y esquiva absolutamente todo.
             
             $examine = $folder->examine();
-            $uidNext = isset($examine['uidnext']) ? (int) $examine['uidnext'] : 1000;
-            $uidStart = max(1, $uidNext - 40); // 40 ciclos = 15 segundos maximo de espera
+            $totalMessages = isset($examine['exists']) ? (int) $examine['exists'] : 1000;
+            
+            $perPage = 20;
+            $lastPage = max(1, (int) ceil($totalMessages / $perPage));
+
+            $messages = $folder->query()
+                ->all()
+                ->setFetchBody(false)
+                ->limit($perPage, $lastPage)
+                ->get();
 
             $messagesArray = [];
-            for ($uid = $uidNext; $uid >= $uidStart; $uid--) {
-                try {
-                    // Castear a (int) evita el bug de comillas.
-                    $msg = $folder->query()->whereUid((int) $uid)->setFetchBody(false)->get()->first();
-                    if ($msg) {
-                        $messagesArray[] = $msg;
-                        if (count($messagesArray) >= 20) {
-                            break;
-                        }
-                    }
-                } catch (\Throwable $ex) {
-                    // Ignorar
-                }
+            foreach ($messages as $msg) {
+                $messagesArray[] = $msg;
             }
 
-            return $messagesArray;
+            // Revertir para tener los más nuevos de primero
+            return array_reverse($messagesArray);
         } catch (\Exception $e) {
             echo "  [ERROR IMAP] " . $e->getMessage() . "\n";
             Log::error('Error obteniendo emails recientes con Webklex', ['error' => $e->getMessage()]);

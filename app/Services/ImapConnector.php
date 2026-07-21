@@ -126,59 +126,22 @@ class ImapConnector
             // Retorna un objeto Webklex\PHPIMAP\Connection\Protocols\Response
             $rawFetch = $protocol->fetch(['UID', 'FLAGS'], $from, $total, 0);
 
-            // Usar el método array() del objeto Response para obtener los datos procesados
-            $fetchData = $rawFetch->array();
-
-            if (empty($fetchData)) {
-                return [];
-            }
-
-            // Extraer UIDs de la respuesta procesada
-            // El formato es: [seqno => ['uid' => X, 'flags' => [...]]] o similar
             $uids = [];
-            foreach ($fetchData as $seqno => $data) {
-                $uid = null;
-                $isUnseen = true;
+            $rawLines = $rawFetch->getResponse();
 
-                if (is_array($data)) {
-                    $uid = $data['uid'] ?? $data['UID'] ?? null;
-                    if (is_array($uid)) {
-                        $uid = (int) array_values($uid)[0];
-                    } else {
-                        $uid = (int) $uid;
-                    }
-
-                    // Verificar FLAGS para saltar los ya leídos y no perder tiempo cargándolos
-                    $flags = $data['flags'] ?? $data['FLAGS'] ?? [];
-                    if (is_array($flags)) {
-                        foreach ($flags as $flag) {
-                            if (stripos((string) $flag, 'Seen') !== false) {
-                                $isUnseen = false;
-                                break;
-                            }
-                        }
-                    } elseif (is_string($flags)) {
-                        if (stripos($flags, 'Seen') !== false) {
-                            $isUnseen = false;
-                        }
-                    }
-                } elseif (is_numeric($data)) {
-                    $uid = (int) $data;
+            // Evitar que array() de Webklex se cuelgue procesando respuestas gigantescas
+            foreach ($rawLines as $line) {
+                if (is_array($line)) {
+                    // Si Webklex ya lo separó en sub-arrays, lo convertimos a string
+                    $line = implode(" ", $line);
                 }
-
-                if ($uid && $uid > 0 && $isUnseen) {
-                    $uids[] = $uid;
-                }
-            }
-
-            // Si no se extrajeron UIDs de ese formato, intentar con getResponse() (líneas crudas)
-            if (empty($uids)) {
-                $rawLines = $rawFetch->getResponse();
-                foreach ($rawLines as $line) {
-                    if (is_string($line) && preg_match('/UID\s+(\d+)/i', $line, $m)) {
-                        // Si la línea tiene \Seen, la ignoramos
-                        if (stripos($line, 'Seen') === false) {
-                            $uids[] = (int) $m[1];
+                
+                if (is_string($line) && preg_match('/UID\s+(\d+)/i', $line, $m)) {
+                    // Si la línea tiene \Seen, la ignoramos (ultra rápido)
+                    if (stripos($line, 'Seen') === false) {
+                        $uid = (int) $m[1];
+                        if ($uid > 0) {
+                            $uids[] = $uid;
                         }
                     }
                 }

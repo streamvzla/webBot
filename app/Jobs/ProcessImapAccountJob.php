@@ -106,6 +106,7 @@ class ProcessImapAccountJob implements ShouldQueue
                 }
 
                 if (in_array($uid, $alreadyProcessed)) {
+                    $connector->markAsRead($uid);
                     continue;
                 }
 

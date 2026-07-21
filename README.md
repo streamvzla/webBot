@@ -316,26 +316,13 @@ docker exec -u root mi-panel-laravel.test-1 php artisan migrate
 > ⚠️ Solo ejecuta este paso si subiste actualizaciones que incluyan cambios en la base de datos. Si no subiste nada, omítelo.
 
 #### Paso 5 — Despertar al Centinela (Modo Fantasma) 👻
-```bash
-nohup docker exec -u sail mi-panel-laravel.test-1 php artisan imap:sentinel > centinela.log 2>&1 &
-```
-> `nohup` asegura que el Centinela **NO muera** al cerrar la consola SSH. Corre en las sombras indefinidamente procesando correos entrantes.
-
-#### Comando Rápido (Para reiniciar el Centinela) 🔄
-Si necesitas aplicar cambios, liberar un congelamiento o simplemente reiniciar el motor asíncrono, asegúrate de estar en `/var/www/mi-panel` y ejecuta esta línea mágica (usa Sail porque el VPS nativo tiene PHP 8.3 y la app exige PHP 8.4+):
-```bash
-pkill -f "imap:sentinel"; sleep 1; nohup docker exec -u sail mi-panel-laravel.test-1 php artisan imap:sentinel > centinela.log 2>&1 & tail -f centinela.log
-```
-
 ---
 
 ### ⚡ Comandos Extra — Modo Dios
 
 | Comando | Descripción |
 |---------|-------------|
-| `tail -f centinela.log` | Ver en tiempo real lo que el Centinela está procesando *(Ctrl+C para salir sin apagarlo)* |
 | `./vendor/bin/sail restart` | Reiniciar solo PHP si hay lentitud o error de caché, sin apagar todo |
-| `pkill -f "imap:sentinel"` | Matar el Centinela si se comporta mal |
 | `./vendor/bin/sail stop` | Apagar completamente todo el servidor |
 | `./vendor/bin/sail ps` | Ver el estado de todos los contenedores activos |
 

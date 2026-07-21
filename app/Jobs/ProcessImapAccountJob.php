@@ -68,6 +68,7 @@ class ProcessImapAccountJob implements ShouldQueue
         $connector = null;
         try {
             $connector = new ImapConnector($this->account);
+            $connector->connect(); // <-- Faltaba esta linea!
             echo "{$echoPrefix} Conectado OK\n";
 
             $messages = $connector->getRecentEmails();

@@ -106,7 +106,15 @@ class ImapConnector
 
             if (!$isMassiveAccount) {
                 // ESTRATEGIA NORMAL (Cuentas regulares)
-                $messages = $folder->query()->setFetchBody(false)->limit(20, 1)->get();
+                // IMPORTANTE: Webklex necesita AL MENOS un parámetro de búsqueda.
+                // Sin ->unseen() usamos ->since(hoy) para traer todos los de hoy,
+                // leídos o no. Esto es válido para Gmail y evita el error:
+                // "BAD Error in IMAP command UID SEARCH: Missing search parameters"
+                $messages = $folder->query()
+                    ->since(now()->startOfDay())
+                    ->setFetchBody(false)
+                    ->limit(20, 1)
+                    ->get();
                 $uids = [];
                 foreach ($messages as $msg) {
                     $uids[] = (int) $msg->getUid();

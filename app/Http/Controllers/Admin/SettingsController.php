@@ -20,6 +20,7 @@ class SettingsController
             'seo_title' => Setting::get(Setting::KEY_SEO_TITLE, 'Code Verification System'),
             'seo_description' => Setting::get(Setting::KEY_SEO_DESCRIPTION, ''),
             'vendor_id' => Setting::get(Setting::KEY_VENDOR_ID, ''),
+            'auto_user_domain' => Setting::get(Setting::KEY_AUTO_USER_DOMAIN, 'streamvzla.com'),
             'email_filter_enabled' => Setting::get(Setting::KEY_EMAIL_FILTER_ENABLED, false),
             'query_cooldown_minutes' => Setting::get(Setting::KEY_QUERY_COOLDOWN_MINUTES, 30),
             
@@ -82,6 +83,7 @@ class SettingsController
             if (isset($validated['seo_title'])) Setting::set(Setting::KEY_SEO_TITLE, $validated['seo_title']);
             if (isset($validated['seo_description'])) Setting::set(Setting::KEY_SEO_DESCRIPTION, $validated['seo_description']);
             if (isset($validated['vendor_id'])) Setting::set(Setting::KEY_VENDOR_ID, $validated['vendor_id']);
+            if (isset($validated['auto_user_domain'])) Setting::set(Setting::KEY_AUTO_USER_DOMAIN, trim($validated['auto_user_domain'], '@/ '));
 
             // Actualizar colores (Fase 6)
             if (isset($validated['theme_color_primary'])) Setting::set('theme_color_primary', $validated['theme_color_primary']);

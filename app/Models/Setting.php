@@ -41,6 +41,9 @@ class Setting extends Model
     // Sistema
     const KEY_VENDOR_ID = 'vendor_id';
 
+    // Franquicias Automáticas
+    const KEY_AUTO_USER_DOMAIN = 'auto_user_domain';
+
     /**
      * Constantes de valor para el modelo Setting (alias para compatibilidad)
      */
@@ -55,6 +58,7 @@ class Setting extends Model
     const WHATSAPP_URL = 'whatsapp_url';
     const WHATSAPP_MESSAGE = 'whatsapp_message';
     const VENDOR_ID = 'vendor_id';
+    const AUTO_USER_DOMAIN = 'auto_user_domain';
 
     /**
      * Valores por defecto para nuevas instalaciones
@@ -82,6 +86,9 @@ class Setting extends Model
 
             // Sistema
             self::VENDOR_ID => '',
+
+            // Franquicias Automáticas
+            self::AUTO_USER_DOMAIN => 'streamvzla.com',
         ];
     }
 

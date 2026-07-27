@@ -82,6 +82,14 @@
                                 <input type="text" id="vendor_id" name="vendor_id" value="{{ old('vendor_id', $settings['vendor_id']) }}" class="ui-input font-mono" placeholder="Ej. VEND-001">
                             </div>
                             <div>
+                                <label for="auto_user_domain" class="ui-label">🌐 Dominio para Nuevos Usuarios (Franquicias)</label>
+                                <div style="display:flex; align-items:center; gap:0.5rem;">
+                                    <span style="color:rgba(148,163,184,0.6); font-size:15px; white-space:nowrap;">nombre@</span>
+                                    <input type="text" id="auto_user_domain" name="auto_user_domain" value="{{ old('auto_user_domain', $settings['auto_user_domain'] ?? 'streamvzla.com') }}" class="ui-input font-mono" placeholder="streamvzla.com">
+                                </div>
+                                <p style="font-size:12px; color:rgba(148,163,184,0.5); margin-top:6px;">Cuando tu tienda crea una franquicia para "Jesus Garcia", se crea el usuario <span style="color:#c084fc; font-family:monospace;">jesus@streamvzla.com</span> automáticamente.</p>
+                            </div>
+                            <div>
                                 <label for="seo_description" class="ui-label">Descripción (Meta Description)</label>
                                 <textarea id="seo_description" name="seo_description" rows="2" class="ui-input resize-none" placeholder="Breve descripción...">{{ old('seo_description', $settings['seo_description']) }}</textarea>
                             </div>

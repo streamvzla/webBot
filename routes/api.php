@@ -35,6 +35,7 @@ Route::middleware(['auth:sanctum', CheckApiKeyUserActive::class])->prefix('v1')-
 Route::prefix('v1/license')->group(function () {
     Route::post('/validate', [\App\Http\Controllers\Api\LicenseController::class, 'validateLicense']);
     Route::post('/heartbeat', [\App\Http\Controllers\Api\LicenseController::class, 'heartbeat']);
+    Route::post('/create-auto', [\App\Http\Controllers\Api\AutoLicenseController::class, 'create']);
 });
 
 // --- CODEBOT OTA UPDATES API (PUBLIC) ---

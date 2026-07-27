@@ -138,4 +138,131 @@ class AutoLicenseController extends Controller
 
         return str_shuffle($password);
     }
+
+    /**
+     * Renueva la membresía de un franquiciado existente sumando días desde hoy
+     * (o desde la fecha de vencimiento actual si aún no ha vencido).
+     * Llamado por la tienda StreamVzla cuando el cliente paga la renovación.
+     */
+    public function renew(Request $request)
+    {
+        // ── 1. VERIFICAR SECRETO ────────────────────────────────────────────────
+        $secret = $request->header('X-BotCodigo-Secret') ?: $request->input('secret');
+        $expectedSecret = config('services.botcodigo.webhook_secret', env('BOTCODIGO_WEBHOOK_SECRET', 'streamvzla_auto_license_secret_2026'));
+
+        if (!$secret || $secret !== $expectedSecret) {
+            return response()->json(['success' => false, 'message' => 'No autorizado.'], 401);
+        }
+
+        // ── 2. VALIDAR ──────────────────────────────────────────────────────────
+        $request->validate([
+            'license_key' => 'required|string',
+            'days'        => 'required|integer|min:1|max:3650',
+        ]);
+
+        $licenseKey = trim($request->input('license_key'));
+        $days       = (int) $request->input('days');
+
+        // ── 3. BUSCAR LA LICENCIA ───────────────────────────────────────────────
+        $license = License::where('license_key', $licenseKey)->first();
+
+        if (!$license) {
+            return response()->json(['success' => false, 'message' => 'Licencia no encontrada.'], 404);
+        }
+
+        // ── 4. BUSCAR EL USUARIO POR EMAIL DEL CLIENTE ─────────────────────────
+        $user = User::where('email', 'like', '%@%')
+            ->where('role', 'admin')
+            ->whereHas('licenses', fn($q) => $q->where('license_key', $licenseKey))
+            ->first();
+
+        // Si no hay relación directa, buscar por client_email de la licencia
+        if (!$user) {
+            $domain = Setting::get(Setting::KEY_AUTO_USER_DOMAIN, 'tu-codigo.com');
+            $baseName = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', explode(' ', $license->client_name)[0]));
+            $user = User::where('email', 'like', "%@{$domain}")
+                        ->where('name', $baseName)
+                        ->first();
+        }
+
+        // ── 5. CALCULAR NUEVA FECHA DE VENCIMIENTO ──────────────────────────────
+        // Si aún no venció → extender desde la fecha actual de vencimiento
+        // Si ya venció → extender desde hoy (reactivación)
+        $currentExpiry = $user?->subscription_ends_at;
+
+        if ($currentExpiry && $currentExpiry->isFuture()) {
+            $newExpiry = $currentExpiry->addDays($days);
+        } else {
+            $newExpiry = now()->addDays($days);
+        }
+
+        // ── 6. ACTUALIZAR USUARIO Y LICENCIA ────────────────────────────────────
+        if ($user) {
+            $user->subscription_ends_at = $newExpiry;
+            $user->save();
+        }
+
+        $license->status = 'active';
+        $license->notes  = $license->notes . " | Renovada +{$days}d el " . now()->toDateString();
+        $license->save();
+
+        Log::info("BotCodigo: Licencia renovada | KEY={$licenseKey} | +{$days} días | Nueva fecha={$newExpiry->toDateString()}");
+
+        return response()->json([
+            'success'    => true,
+            'license_key'=> $licenseKey,
+            'days_added' => $days,
+            'expires_at' => $newExpiry->toDateString(),
+            'message'    => "Membresía renovada por {$days} días. Nuevo vencimiento: {$newExpiry->toDateString()}.",
+        ]);
+    }
+
+    /**
+     * Suspende un franquiciado cuando su membresía vence o el cliente cancela.
+     * Llamado por la tienda StreamVzla cuando detecta el vencimiento.
+     */
+    public function suspend(Request $request)
+    {
+        // ── 1. VERIFICAR SECRETO ────────────────────────────────────────────────
+        $secret = $request->header('X-BotCodigo-Secret') ?: $request->input('secret');
+        $expectedSecret = config('services.botcodigo.webhook_secret', env('BOTCODIGO_WEBHOOK_SECRET', 'streamvzla_auto_license_secret_2026'));
+
+        if (!$secret || $secret !== $expectedSecret) {
+            return response()->json(['success' => false, 'message' => 'No autorizado.'], 401);
+        }
+
+        // ── 2. VALIDAR ──────────────────────────────────────────────────────────
+        $request->validate([
+            'license_key' => 'required|string',
+        ]);
+
+        $license = License::where('license_key', trim($request->input('license_key')))->first();
+
+        if (!$license) {
+            return response()->json(['success' => false, 'message' => 'Licencia no encontrada.'], 404);
+        }
+
+        // ── 3. SUSPENDER ────────────────────────────────────────────────────────
+        $license->status = 'suspended';
+        $license->save();
+
+        // Bloquear el usuario asociado
+        $domain   = Setting::get(Setting::KEY_AUTO_USER_DOMAIN, 'tu-codigo.com');
+        $baseName = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', explode(' ', $license->client_name)[0]));
+        $user     = User::where('email', 'like', "%@{$domain}")->where('name', $baseName)->first();
+
+        if ($user) {
+            $user->subscription_ends_at = now()->subDay(); // Marcarlo como vencido
+            $user->save();
+        }
+
+        Log::info("BotCodigo: Licencia suspendida | KEY={$request->input('license_key')}");
+
+        return response()->json([
+            'success'     => true,
+            'license_key' => $license->license_key,
+            'status'      => 'suspended',
+            'message'     => 'Franquicia suspendida correctamente.',
+        ]);
+    }
 }

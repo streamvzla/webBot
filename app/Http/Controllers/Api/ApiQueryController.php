@@ -137,66 +137,80 @@ class ApiQueryController extends Controller
             return response()->json(['success' => false, 'message' => 'No tienes buzones IMAP configurados en tu panel.'], 404);
         }
 
-        // 3. Buscar el código en los buzones
-        $codeFound = null;
-        $matchedPlatform = null;
-        
-        $startTime = microtime(true);
+        // 3. Buscar el código en los buzones usando el motor On-Demand
+        $codeFound  = null;
+        $startTime  = microtime(true);
+
+        $expectedRecipients = [strtolower($targetEmail)];
+        $platformSubjects   = [$platform->name => $platform->subjects()->where('is_active', true)->pluck('subject')->toArray()];
 
         foreach ($emailAccounts as $account) {
             try {
                 $connector = new ImapConnector($account);
                 $connector->connect();
-                
-                // Buscar el código real usando el motor IMAP
-                $result = $connector->searchCodes($targetEmail, $subjects, 1); // Buscar en última hora
+
+                // Traer los últimos correos recientes del buzón
+                $messages = $connector->getRecentEmails(1);
+
+                foreach ($messages as $message) {
+                    $emailData = $connector->searchByTo($message, $expectedRecipients, $platformSubjects);
+
+                    if ($emailData) {
+                        $cleanText = strip_tags($emailData['body']);
+                        $extracted = EmailCodeExtractor::extract($emailData['body'], $cleanText);
+                        $val = is_array($extracted) ? ($extracted['value'] ?? null) : $extracted;
+
+                        if ($val) {
+                            $codeFound = [
+                                'code'        => $val,
+                                'platform'    => $platform->name,
+                                'received_at' => now()->toDateTimeString(),
+                            ];
+                            break 2; // Salir de ambos foreach
+                        }
+                    }
+                }
+
                 $connector->disconnect();
 
-                if ($result) {
-                    $codeFound = $result;
-                    break;
-                }
             } catch (\Exception $e) {
                 Log::error("API IMAP Error en buzón {$account->email}: " . $e->getMessage());
-                continue; // Si falla un buzón, intentar con el siguiente
+                continue;
             }
         }
 
         $queryTimeMs = round((microtime(true) - $startTime) * 1000);
 
         // 4. Registrar consulta
-        $status = $codeFound ? Query::STATUS_FOUND : Query::STATUS_NOT_FOUND;
-        
         $queryRecord = Query::create([
-            'email' => $targetEmail,
-            'platform_id' => $platform->id,
-            'status' => $status,
-            'code_found' => $codeFound ? $codeFound['code'] ?? 'CODE_FOUND' : null,
-            'query_time_ms' => $queryTimeMs,
-            'user_id' => $user->id,
-            'source' => 'api',
-            'ip_address' => $request->ip(),
-            'processed_at' => now()
+            'email'          => $targetEmail,
+            'platform_id'    => $platform->id,
+            'result'         => $codeFound ? 'success' : 'no_code',
+            'code_hash'      => $codeFound ? Query::hashCode($codeFound['code']) : null,
+            'code_status'    => $codeFound ? 'found' : 'not_found',
+            'user_id'        => $user->id,
+            'ip_address'     => $request->ip(),
+            'user_agent'     => $request->userAgent(),
         ]);
 
         if ($codeFound) {
             return response()->json([
                 'success' => true,
                 'message' => 'Código encontrado exitosamente.',
-                'data' => [
-                    'email' => $targetEmail,
+                'data'    => [
+                    'email'    => $targetEmail,
                     'platform' => $platform->name,
-                    'code' => $codeFound,
+                    'code'     => $codeFound['code'],
                     'query_id' => $queryRecord->id,
-                    'time_ms' => $queryTimeMs
+                    'time_ms'  => $queryTimeMs,
                 ]
             ]);
         }
 
         return response()->json([
-            'success' => false,
-            'message' => 'No se encontró ningún código reciente para este correo y plataforma.',
-            'query_id' => $queryRecord->id
+            'success'  => false,
+            'message'  => 'No se encontró ningún código reciente para este correo y plataforma.',
+            'query_id' => $queryRecord->id,
         ], 404);
     }
 }

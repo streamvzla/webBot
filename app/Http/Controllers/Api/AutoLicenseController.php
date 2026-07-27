@@ -36,11 +36,14 @@ class AutoLicenseController extends Controller
             'client_name'  => 'required|string|max:255',
             'client_email' => 'required|email|max:255',
             'plan'         => 'nullable|string',
+            'days'         => 'nullable|integer|min:1|max:3650',
         ]);
 
         $clientName  = trim($request->input('client_name'));
         $clientEmail = trim($request->input('client_email'));
         $plan        = $request->input('plan', 'Estándar');
+        $days        = (int) $request->input('days', 30); // Por defecto 30 días
+        $expiresAt   = now()->addDays($days);
 
         // ── 3. GENERAR KEY ÚNICA ────────────────────────────────────────────────
         do {
@@ -52,7 +55,7 @@ class AutoLicenseController extends Controller
             'client_name'     => $clientName,
             'client_email'    => $clientEmail,
             'status'          => 'active',
-            'notes'           => "Generada automáticamente vía API desde Tienda StreamVzla (Plan: {$plan})",
+            'notes'           => "Generada automáticamente vía API desde Tienda StreamVzla (Plan: {$plan} | {$days} días)",
             'max_clients'     => null,
             'max_queries_day' => null,
         ]);
@@ -80,18 +83,19 @@ class AutoLicenseController extends Controller
 
         // ── 5. CREAR EL USUARIO EN LA BASE DE DATOS ────────────────────────────
         $user = User::create([
-            'name'              => $username,
-            'email'             => $userEmail,
-            'password'          => Hash::make($userPassword),
-            'role'              => 'admin',   // Admin = Franquiciado con panel completo
-            'email_verified_at' => now(),
+            'name'                  => $username,
+            'email'                 => $userEmail,
+            'password'              => Hash::make($userPassword),
+            'role'                  => 'admin',
+            'email_verified_at'     => now(),
+            'subscription_ends_at'  => $expiresAt,  // Vencimiento automático
         ]);
 
         // ── 6. LOG DE CONFIRMACIÓN ─────────────────────────────────────────────
         // El correo de bienvenida NO se envía desde aquí.
         // La tienda StreamVzla recibe las credenciales en la respuesta y es
         // ella quien envía el correo al cliente con su propio SMTP.
-        Log::info("BotCodigo: Franquicia creada | KEY={$key} | Usuario={$userEmail} | Para={$clientEmail}");
+        Log::info("BotCodigo: Franquicia creada | KEY={$key} | Usuario={$userEmail} | Vence={$expiresAt->toDateString()} | Para={$clientEmail}");
 
         // ── 7. RESPONDER A LA TIENDA ────────────────────────────────────────────
         return response()->json([
@@ -102,8 +106,10 @@ class AutoLicenseController extends Controller
             'user_email'    => $userEmail,
             'user_password' => $userPassword,
             'user_name'     => $username,
-            'panel_url'     => $panelUrl,
-            'message'       => "Franquicia activada. Credenciales enviadas a {$clientEmail}.",
+            'panel_url'     => config('app.url') . '/login',
+            'expires_at'    => $expiresAt->toDateString(),   // Fecha exacta de vencimiento
+            'days'          => $days,                         // Días comprados
+            'message'       => "Franquicia activada por {$days} días. Vence el {$expiresAt->toDateString()}.",
         ]);
     }
 

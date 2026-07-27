@@ -130,6 +130,53 @@
                 </div>
             </div>
 
+            @if(!$isEditing)
+            {{-- ── BLOQUE 4: Membresía y Activación Automática ── --}}
+            <div class="ae-card ui-anim-in ui-delay-3" style="border-top: 2px solid rgba(168,85,247,0.4);">
+                <div class="ae-card-head">
+                    <div class="ae-card-title">
+                        <div style="display:flex;align-items:center;gap:0.75rem;">
+                            <div class="ui-icon-wrap" style="color:#c084fc; background:rgba(192,132,252,0.15);">
+                                <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            </div>
+                            Membresía y Activación Automática
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ae-card-body">
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:1.5rem;">
+                        {{-- Días de membresía --}}
+                        <div>
+                            <label class="ui-label">⏳ Días de Membresía</label>
+                            <input wire:model="days" type="number" min="1" max="3650"
+                                class="ui-input font-mono"
+                                placeholder="30">
+                            <p style="font-size:12px; color:rgba(148,163,184,0.5); margin-top:6px;">
+                                La cuenta se bloqueará automáticamente al vencer este plazo.
+                            </p>
+                            @error('days') <p class="ui-error-msg">{{ $message }}</p> @enderror
+                        </div>
+
+                        {{-- Crear usuario --}}
+                        <div style="display:flex; flex-direction:column; justify-content:center;">
+                            <label class="ui-label">🤖 Crear Usuario Admin Automáticamente</label>
+                            <label style="display:flex; align-items:center; gap:0.75rem; cursor:pointer; margin-top:0.5rem;">
+                                <input wire:model="create_user" type="checkbox"
+                                    style="width:18px; height:18px; accent-color:#c084fc; cursor:pointer;">
+                                <span style="color:rgba(203,213,225,0.8); font-size:0.9rem;">
+                                    Crear cuenta <span style="color:#c084fc; font-family:monospace;">nombre@tu-codigo.com</span> con contraseña segura
+                                </span>
+                            </label>
+                            <p style="font-size:12px; color:rgba(148,163,184,0.5); margin-top:6px;">
+                                Las credenciales se mostrarán en pantalla al guardar. Cópialas antes de salir.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @endif
+
             {{-- ── BOTONES ── --}}
             <div class="ui-anim-in ui-delay-3 ui-form-actions">
                 <a href="{{ route('admin.licenses.index') }}" wire:navigate class="ui-btn ui-btn-secondary ui-btn-large" style="flex:1;">

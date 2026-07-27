@@ -20,7 +20,7 @@ class SettingsController
             'seo_title' => Setting::get(Setting::KEY_SEO_TITLE, 'Code Verification System'),
             'seo_description' => Setting::get(Setting::KEY_SEO_DESCRIPTION, ''),
             'vendor_id' => Setting::get(Setting::KEY_VENDOR_ID, ''),
-            'auto_user_domain' => Setting::get(Setting::KEY_AUTO_USER_DOMAIN, 'streamvzla.com'),
+            'auto_user_domain' => Setting::get(Setting::KEY_AUTO_USER_DOMAIN, 'tu-codigo.com'),
             'email_filter_enabled' => Setting::get(Setting::KEY_EMAIL_FILTER_ENABLED, false),
             'query_cooldown_minutes' => Setting::get(Setting::KEY_QUERY_COOLDOWN_MINUTES, 30),
             

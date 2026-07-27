@@ -85,9 +85,9 @@
                                 <label for="auto_user_domain" class="ui-label">🌐 Dominio para Nuevos Usuarios (Franquicias)</label>
                                 <div style="display:flex; align-items:center; gap:0.5rem;">
                                     <span style="color:rgba(148,163,184,0.6); font-size:15px; white-space:nowrap;">nombre@</span>
-                                    <input type="text" id="auto_user_domain" name="auto_user_domain" value="{{ old('auto_user_domain', $settings['auto_user_domain'] ?? 'streamvzla.com') }}" class="ui-input font-mono" placeholder="streamvzla.com">
+                                    <input type="text" id="auto_user_domain" name="auto_user_domain" value="{{ old('auto_user_domain', $settings['auto_user_domain'] ?? 'tu-codigo.com') }}" class="ui-input font-mono" placeholder="tu-codigo.com">
                                 </div>
-                                <p style="font-size:12px; color:rgba(148,163,184,0.5); margin-top:6px;">Cuando tu tienda crea una franquicia para "Jesus Garcia", se crea el usuario <span style="color:#c084fc; font-family:monospace;">jesus@streamvzla.com</span> automáticamente.</p>
+                                <p style="font-size:12px; color:rgba(148,163,184,0.5); margin-top:6px;">Cuando tu tienda crea una franquicia para "Jesus Garcia", se crea el usuario <span style="color:#c084fc; font-family:monospace;">jesus@tu-codigo.com</span> automáticamente.</p>
                             </div>
                             <div>
                                 <label for="seo_description" class="ui-label">Descripción (Meta Description)</label>

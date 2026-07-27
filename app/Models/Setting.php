@@ -88,7 +88,7 @@ class Setting extends Model
             self::VENDOR_ID => '',
 
             // Franquicias Automáticas
-            self::AUTO_USER_DOMAIN => 'streamvzla.com',
+            self::AUTO_USER_DOMAIN => 'tu-codigo.com',
         ];
     }
 

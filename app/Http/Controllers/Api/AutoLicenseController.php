@@ -3,14 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Mail\FranchiseWelcomeMail;
 use App\Models\License;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class AutoLicenseController extends Controller
@@ -89,24 +87,10 @@ class AutoLicenseController extends Controller
             'email_verified_at' => now(),
         ]);
 
-        // ── 6. ENVIAR CORREO DE BIENVENIDA CON CREDENCIALES ────────────────────
-        $siteName = Setting::get(Setting::KEY_SITE_NAME, config('app.name', 'BotCodigo'));
-        $panelUrl = config('app.url') . '/login';
-
-        try {
-            Mail::to($clientEmail)->send(new FranchiseWelcomeMail(
-                clientName:   $clientName,
-                userEmail:    $userEmail,
-                userPassword: $userPassword,
-                panelUrl:     $panelUrl,
-                siteName:     $siteName,
-            ));
-            Log::info("BotCodigo: Correo de bienvenida enviado a {$clientEmail} para usuario {$userEmail}");
-        } catch (\Throwable $e) {
-            // No cancelar si el correo falla — la cuenta ya fue creada
-            Log::error("BotCodigo: No se pudo enviar correo de bienvenida a {$clientEmail}: " . $e->getMessage());
-        }
-
+        // ── 6. LOG DE CONFIRMACIÓN ─────────────────────────────────────────────
+        // El correo de bienvenida NO se envía desde aquí.
+        // La tienda StreamVzla recibe las credenciales en la respuesta y es
+        // ella quien envía el correo al cliente con su propio SMTP.
         Log::info("BotCodigo: Franquicia creada | KEY={$key} | Usuario={$userEmail} | Para={$clientEmail}");
 
         // ── 7. RESPONDER A LA TIENDA ────────────────────────────────────────────
